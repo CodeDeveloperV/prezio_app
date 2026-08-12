@@ -20,6 +20,13 @@ collaborative multi-user lists, push notifications, admin panel, barcode decodin
 WatermelonDB sync loop yet — see README.md "Fase 2" for the full list of what's intentionally not
 built).
 
+## Reglas generales de trabajo
+
+- **Idioma de la conversación: español.** Responde en español en el chat de Claude Code (explicaciones, resúmenes, preguntas de aclaración). Esto es independiente de la regla de código en inglés de abajo — una cosa es cómo conversamos, otra es lo que se escribe en el repositorio.
+- **Cuando exista ambigüedad sobre a qué domain pertenece un cambio, qué layout usar (legacy vs modular), qué convención de negocio aplica, o cualquier decisión que no esté explícitamente cubierta en este archivo — pregunta antes de asumir.** No adivines reglas de negocio ni inventes convenciones nuevas sin confirmar. Es preferible una pregunta corta a una implementación incorrecta que haya que deshacer.
+- **Reutiliza antes de crear.** Antes de escribir una función, método o utilidad nueva, verifica si ya existe algo que resuelva la tarea (o una parte de ella). Usa `graphify query` (ver abajo) para confirmar antes de duplicar lógica.
+- **Todo el código en inglés, sin excepción — incluyendo texto de cara al usuario final.** Nombres de funciones, variables, clases, módulos, campos de modelos, mensajes de commit, comentarios de código, mensajes de error de API, contenido de emails, y cualquier string literal en el código van en inglés. Esto aplica tanto a layout legacy como modular. Si un texto necesita mostrarse en español para el mercado final, eso se resuelve vía i18n/localización, no hardcodeando el string en español directamente en el código.
+- 
 ## Commands
 
 ### Backend (`backend/`)
