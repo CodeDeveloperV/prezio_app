@@ -246,6 +246,9 @@ class CatalogResolutionEngine:
                 category_id=category_id,
                 presentation=presentation,
                 image_url=image_url,
+                # Always MANUAL for now -- a future flow where the user confirms an
+                # AI-extracted suggestion (see image_extraction_provider.py) would pass
+                # RecognitionType.IMAGE here instead.
                 recognition_type=RecognitionType.MANUAL,
                 status=ModerationStatus.APPROVED if auto_approved else ModerationStatus.PENDING,
                 reviewed_at=_utcnow() if auto_approved else None,
