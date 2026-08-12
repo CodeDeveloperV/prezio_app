@@ -63,7 +63,7 @@ export function PriceUpdateScreen({ route, navigation }: Props) {
 
       <Button
         backgroundColor="$primary"
-        color="white"
+        color="$white"
         disabled={updatePriceMutation.isPending}
         onPress={handleSubmit}
       >

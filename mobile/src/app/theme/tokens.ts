@@ -32,6 +32,7 @@ export const colorTokens = {
   danger: palette.red500,
   warning: palette.amber500,
   border: palette.gray100,
+  white: palette.white,
 } as const;
 
 export const fontFamily = {
@@ -39,6 +40,19 @@ export const fontFamily = {
   heading: 'Poppins-SemiBold',
   // Poppins Regular drives body copy.
   body: 'Poppins-Regular',
+} as const;
+
+export const brand = {
+  name: 'Prezio',
+  colors: palette,
+  typography: fontFamily,
+  iconography: {
+    strokeWidth: {
+      subtle: 1.5,
+      regular: 1.75,
+      strong: 2,
+    },
+  },
 } as const;
 
 export const fontWeightScale = {

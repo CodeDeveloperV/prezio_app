@@ -4,7 +4,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { Button, Input, Text, XStack, YStack } from 'tamagui';
 
-import { IconBarcode } from '../../app/theme/icons';
+import { SUBTLE_ICON_STROKE_WIDTH, IconBarcode } from '../../app/theme/icons';
+import { colorTokens } from '../../app/theme/tokens';
 import { useScanBarcodeMutation } from '../catalog/hooks/useCatalogMutations';
 import type { ShoppingSessionStackParamList } from '../../app/navigation/types';
 
@@ -69,7 +70,7 @@ export function ScanScreen({ route, navigation }: Props) {
   if (!hasPermission) {
     return (
       <YStack flex={1} backgroundColor="$surface" alignItems="center" justifyContent="center" gap="$3" padding="$5">
-        <IconBarcode color="#64748B" size={32} strokeWidth={1.5} />
+        <IconBarcode color={colorTokens.textSecondary} size={32} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
         <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
           Prezio necesita acceso a la cámara para escanear códigos de barra.
         </Text>
@@ -83,7 +84,7 @@ export function ScanScreen({ route, navigation }: Props) {
         <Camera style={StyleSheet.absoluteFill} device={device} isActive />
       ) : (
         <YStack flex={1} alignItems="center" justifyContent="center">
-          <Text fontFamily="$body" fontSize="$sm" color="white">
+          <Text fontFamily="$body" fontSize="$sm" color="$white">
             Buscando cámara disponible...
           </Text>
         </YStack>
@@ -113,11 +114,11 @@ export function ScanScreen({ route, navigation }: Props) {
           />
           <Button
             backgroundColor="$primary"
-            color="white"
+            color="$white"
             disabled={!barcode.trim() || scanMutation.isPending}
             onPress={handleSubmit}
           >
-            {scanMutation.isPending ? <ActivityIndicator color="white" /> : 'Buscar'}
+            {scanMutation.isPending ? <ActivityIndicator color={colorTokens.white} /> : 'Buscar'}
           </Button>
         </XStack>
       </YStack>

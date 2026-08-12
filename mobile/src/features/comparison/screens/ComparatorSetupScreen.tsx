@@ -4,7 +4,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Input, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
-import { IconMapPin, IconScale } from '../../../app/theme/icons';
+import { DEFAULT_ICON_STROKE_WIDTH, SUBTLE_ICON_STROKE_WIDTH, IconMapPin, IconScale } from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import { useShoppingListsQuery } from '../../shopping-lists/hooks/useShoppingLists';
 import { useCompareShoppingListMutation } from '../hooks/useComparisonMutations';
 import type { ComparisonStackParamList } from '../../../app/navigation/types';
@@ -44,13 +45,13 @@ export function ComparatorSetupScreen({ navigation }: Props) {
   return (
     <ScreenContainer scroll={false}>
       <YStack gap="$2">
-        <IconScale color="#22C55E" size={32} strokeWidth={1.5} />
+        <IconScale color={colorTokens.primary} size={32} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
         <Text fontFamily="$heading" fontSize="$lg" color="$color">
           ¿Qué lista quieres comparar?
         </Text>
       </YStack>
 
-      {listsQuery.isPending && <ActivityIndicator color="#22C55E" />}
+      {listsQuery.isPending && <ActivityIndicator color={colorTokens.primary} />}
       {listsQuery.isError && (
         <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
           No pudimos cargar tus listas.
@@ -72,7 +73,7 @@ export function ComparatorSetupScreen({ navigation }: Props) {
             <Text
               fontFamily="$body"
               fontSize="$md"
-              color={selectedList?.id === item.id ? 'white' : '$color'}
+              color={selectedList?.id === item.id ? '$white' : '$color'}
             >
               {item.name}
             </Text>
@@ -82,7 +83,7 @@ export function ComparatorSetupScreen({ navigation }: Props) {
 
       <YStack gap="$1">
         <XStack alignItems="center" gap="$2">
-          <IconMapPin color="#64748B" size={18} strokeWidth={1.75} />
+          <IconMapPin color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
             Ciudad
           </Text>
@@ -98,7 +99,7 @@ export function ComparatorSetupScreen({ navigation }: Props) {
 
       <Button
         backgroundColor="$primary"
-        color="white"
+        color="$white"
         disabled={!canCompare || compareMutation.isPending}
         onPress={handleCompare}
       >

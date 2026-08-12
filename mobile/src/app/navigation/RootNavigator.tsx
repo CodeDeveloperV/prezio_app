@@ -6,13 +6,14 @@ import { YStack } from 'tamagui';
 import { useAuthStore } from '../../shared/store/authStore';
 import { useSessionBootstrap } from '../../features/auth/hooks/useSessionBootstrap';
 import { wsClient } from '../../shared/services/ws/wsClient';
+import { colorTokens } from '../theme/tokens';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
 
 function SplashFallback() {
   return (
     <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center">
-      <ActivityIndicator color="#22C55E" />
+      <ActivityIndicator color={colorTokens.primary} />
     </YStack>
   );
 }

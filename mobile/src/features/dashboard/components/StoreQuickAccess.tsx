@@ -1,13 +1,15 @@
 import { ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
-import { IconBuildingStore } from '../../../app/theme/icons';
+import { DEFAULT_ICON_STROKE_WIDTH, IconBuildingStore } from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import type { MockStore } from '../mockData';
 
 interface StoreQuickAccessProps {
   stores: MockStore[];
   onPressStore: (store: MockStore) => void;
 }
+const rowPressStyle = { opacity: 0.7 };
 
 /** Horizontal shortcuts to the supermarket chains the user shops at most. */
 export function StoreQuickAccess({ stores, onPressStore }: StoreQuickAccessProps) {
@@ -29,7 +31,7 @@ export function StoreQuickAccess({ stores, onPressStore }: StoreQuickAccessProps
               width={92}
               alignItems="center"
               gap="$2"
-              pressStyle={{ opacity: 0.7 }}
+              pressStyle={rowPressStyle}
             >
               <YStack
                 width={44}
@@ -39,7 +41,11 @@ export function StoreQuickAccess({ stores, onPressStore }: StoreQuickAccessProps
                 alignItems="center"
                 justifyContent="center"
               >
-                <IconBuildingStore color="#22C55E" size={22} strokeWidth={1.75} />
+                <IconBuildingStore
+                  color={colorTokens.primary}
+                  size={22}
+                  strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                />
               </YStack>
               <Text
                 fontFamily="$body"

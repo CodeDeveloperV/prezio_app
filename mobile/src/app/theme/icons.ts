@@ -5,6 +5,8 @@
  * keep Metro from pulling every one of Tabler's ~5k icon modules into the
  * bundle graph.
  */
+import { brand } from './tokens';
+
 export { default as IconBarcode } from '@tabler/icons-react-native/IconBarcode';
 export { default as IconScan } from '@tabler/icons-react-native/IconScan';
 export { default as IconShoppingCart } from '@tabler/icons-react-native/IconShoppingCart';
@@ -26,5 +28,11 @@ export { default as IconEdit } from '@tabler/icons-react-native/IconEdit';
 export { default as IconScale } from '@tabler/icons-react-native/IconScale';
 export { default as IconMapPin } from '@tabler/icons-react-native/IconMapPin';
 export { default as IconAlertTriangle } from '@tabler/icons-react-native/IconAlertTriangle';
+export { default as IconBell } from '@tabler/icons-react-native/IconBell';
+export { default as IconBellRinging } from '@tabler/icons-react-native/IconBellRinging';
+export { default as IconTrash } from '@tabler/icons-react-native/IconTrash';
+export { default as IconPower } from '@tabler/icons-react-native/IconPower';
 
-export const DEFAULT_ICON_STROKE_WIDTH = 1.75;
+export const DEFAULT_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.regular;
+export const SUBTLE_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.subtle;
+export const STRONG_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.strong;

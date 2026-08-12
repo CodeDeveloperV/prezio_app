@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 import { Text } from 'tamagui';
 
@@ -25,6 +25,11 @@ interface LineChartProps {
 
 const PADDING = { top: 24, right: 12, bottom: 28, left: 12 };
 const DEFAULT_HEIGHT = 180;
+const styles = StyleSheet.create({
+  fullWidth: {
+    width: '100%',
+  },
+});
 
 /**
  * Minimal, dependency-free line chart built on react-native-svg. Not tied to any
@@ -87,7 +92,7 @@ export function LineChart({
   const linePoints = sorted.map((p) => `${toScreenX(p.x)},${toScreenY(p.y)}`).join(' ');
 
   return (
-    <View onLayout={handleLayout} style={{ width: '100%' }}>
+    <View onLayout={handleLayout} style={styles.fullWidth}>
       {width > 0 && (
         <Svg width={width} height={height}>
           <Line x1={PADDING.left} y1={PADDING.top} x2={PADDING.left} y2={baselineY} stroke={axisColor} strokeWidth={1} />

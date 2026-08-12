@@ -1,0 +1,8 @@
+<resources>
+    <color name="prezio_primary">#22C55E</color>
+    <color name="prezio_primary_dark">#16A34A</color>
+    <color name="prezio_background">#0F172A</color>
+    <color name="prezio_surface">#F3F4F6</color>
+    <color name="prezio_secondary">#64748B</color>
+    <color name="prezio_white">#FFFFFF</color>
+</resources>

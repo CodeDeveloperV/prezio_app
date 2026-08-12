@@ -88,7 +88,7 @@ export function CreateProductScreen({ route, navigation }: Props) {
               <Text
                 fontFamily="$body"
                 fontSize="$sm"
-                color={categoryId === item.id ? 'white' : '$color'}
+              color={categoryId === item.id ? '$white' : '$color'}
               >
                 {item.name}
               </Text>
@@ -100,7 +100,7 @@ export function CreateProductScreen({ route, navigation }: Props) {
       <Button
         disabled={!canSubmit || createProductMutation.isPending}
         backgroundColor="$primary"
-        color="white"
+        color="$white"
         onPress={handleSubmit}
       >
         Crear producto

@@ -4,7 +4,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
-import { IconBuildingStore, IconChevronRight, IconShoppingCart } from '../../../app/theme/icons';
+import {
+  DEFAULT_ICON_STROKE_WIDTH,
+  SUBTLE_ICON_STROKE_WIDTH,
+  IconBuildingStore,
+  IconChevronRight,
+  IconShoppingCart,
+} from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import { useStoreBranchesQuery, useStoresQuery } from '../../stores/hooks/useStores';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 
@@ -23,13 +30,13 @@ export function BranchSelectScreen({ navigation }: Props) {
     return (
       <ScreenContainer scroll={false}>
         <YStack gap="$2">
-          <IconShoppingCart color="#22C55E" size={32} strokeWidth={1.5} />
+          <IconShoppingCart color={colorTokens.primary} size={32} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
           <Text fontFamily="$heading" fontSize="$lg" color="$color">
             ¿En qué tienda vas a comprar?
           </Text>
         </YStack>
 
-        {storesQuery.isPending && <ActivityIndicator color="#22C55E" />}
+        {storesQuery.isPending && <ActivityIndicator color={colorTokens.primary} />}
         {storesQuery.isError && (
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
             No pudimos cargar las tiendas.
@@ -50,12 +57,20 @@ export function BranchSelectScreen({ navigation }: Props) {
               onPress={() => setSelectedStore(item)}
             >
               <XStack alignItems="center" gap="$3">
-                <IconBuildingStore color="#64748B" size={20} strokeWidth={1.75} />
+                <IconBuildingStore
+                  color={colorTokens.textSecondary}
+                  size={20}
+                  strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                />
                 <Text fontFamily="$body" fontSize="$md" color="$color">
                   {item.name}
                 </Text>
               </XStack>
-              <IconChevronRight color="#64748B" size={18} strokeWidth={1.75} />
+              <IconChevronRight
+                color={colorTokens.textSecondary}
+                size={18}
+                strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+              />
             </XStack>
           )}
         />
@@ -74,7 +89,7 @@ export function BranchSelectScreen({ navigation }: Props) {
         </Text>
       </YStack>
 
-      {branchesQuery.isPending && <ActivityIndicator color="#22C55E" />}
+      {branchesQuery.isPending && <ActivityIndicator color={colorTokens.primary} />}
       {branchesQuery.isError && (
         <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
           No pudimos cargar las sucursales.
@@ -102,7 +117,11 @@ export function BranchSelectScreen({ navigation }: Props) {
                 {item.city}
               </Text>
             </YStack>
-            <IconChevronRight color="#64748B" size={18} strokeWidth={1.75} />
+            <IconChevronRight
+              color={colorTokens.textSecondary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
           </XStack>
         )}
       />

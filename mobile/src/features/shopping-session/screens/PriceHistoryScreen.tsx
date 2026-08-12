@@ -4,6 +4,7 @@ import { Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { LineChart } from '../../../shared/components/charts/LineChart';
+import { colorTokens } from '../../../app/theme/tokens';
 import { usePriceHistoryQuery } from '../../pricing/hooks/usePricingMutations';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 
@@ -38,7 +39,7 @@ export function PriceHistoryScreen({ route }: Props) {
 
   return (
     <ScreenContainer scroll={false}>
-      {historyQuery.isPending && <ActivityIndicator color="#22C55E" />}
+      {historyQuery.isPending && <ActivityIndicator color={colorTokens.primary} />}
       {historyQuery.isError && (
         <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
           No pudimos cargar el historial de precios.

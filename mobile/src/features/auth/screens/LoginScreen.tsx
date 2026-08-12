@@ -5,10 +5,19 @@ import { Button, Input, Text, XStack, YStack } from 'tamagui';
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { useGoogleLoginMutation, useLoginMutation } from '../hooks/useAuthMutations';
 import { signInWithGoogle } from '../services/googleSignIn';
-import { IconBrandGoogleFilled, IconLock, IconMail } from '../../../app/theme/icons';
+import {
+  DEFAULT_ICON_STROKE_WIDTH,
+  SUBTLE_ICON_STROKE_WIDTH,
+  IconBrandGoogleFilled,
+  IconLock,
+  IconMail,
+} from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import type { AuthStackParamList } from '../../../app/navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+const primaryPressStyle = { backgroundColor: '$primaryPress' };
+const subtlePressStyle = { opacity: 0.7 };
 
 export function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
@@ -54,7 +63,7 @@ export function LoginScreen({ navigation }: Props) {
             borderRadius="$3"
             paddingHorizontal="$3"
           >
-            <IconMail color="#64748B" size={18} strokeWidth={1.75} />
+            <IconMail color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
             <Input
               flex={1}
               unstyled
@@ -75,7 +84,7 @@ export function LoginScreen({ navigation }: Props) {
             borderRadius="$3"
             paddingHorizontal="$3"
           >
-            <IconLock color="#64748B" size={18} strokeWidth={1.75} />
+            <IconLock color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
             <Input
               flex={1}
               unstyled
@@ -101,11 +110,11 @@ export function LoginScreen({ navigation }: Props) {
             disabled={isSubmitting}
             opacity={isSubmitting ? 0.7 : 1}
             backgroundColor="$primary"
-            pressStyle={{ backgroundColor: '$primaryPress' }}
+            pressStyle={primaryPressStyle}
             borderRadius="$3"
             size="$5"
           >
-            <Text fontFamily="$heading" fontSize="$md" color="white">
+            <Text fontFamily="$heading" fontSize="$md" color="$white">
               Iniciar sesión
             </Text>
           </Button>
@@ -119,7 +128,13 @@ export function LoginScreen({ navigation }: Props) {
             borderWidth={1}
             borderRadius="$3"
             size="$5"
-            icon={<IconBrandGoogleFilled color="#0F172A" size={18} strokeWidth={1.5} />}
+            icon={
+              <IconBrandGoogleFilled
+                color={colorTokens.textPrimary}
+                size={18}
+                strokeWidth={SUBTLE_ICON_STROKE_WIDTH}
+              />
+            }
           >
             <Text fontFamily="$body" fontSize="$sm" color="$color">
               Continuar con Google
@@ -136,6 +151,7 @@ export function LoginScreen({ navigation }: Props) {
             fontFamily="$heading"
             fontSize="$sm"
             color="$primary"
+            pressStyle={subtlePressStyle}
           >
             Registrate
           </Text>

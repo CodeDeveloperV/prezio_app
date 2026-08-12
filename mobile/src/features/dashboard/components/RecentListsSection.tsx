@@ -1,12 +1,19 @@
 import { Text, XStack, YStack } from 'tamagui';
 
-import { IconChevronRight, IconReceipt } from '../../../app/theme/icons';
+import {
+  DEFAULT_ICON_STROKE_WIDTH,
+  SUBTLE_ICON_STROKE_WIDTH,
+  IconChevronRight,
+  IconReceipt,
+} from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import type { MockShoppingList } from '../mockData';
 
 interface RecentListsSectionProps {
   lists: MockShoppingList[];
   onPressList: (list: MockShoppingList) => void;
 }
+const rowPressStyle = { opacity: 0.7 };
 
 export function RecentListsSection({ lists, onPressList }: RecentListsSectionProps) {
   return (
@@ -23,7 +30,7 @@ export function RecentListsSection({ lists, onPressList }: RecentListsSectionPro
           alignItems="center"
           gap="$2"
         >
-          <IconReceipt color="#64748B" size={28} strokeWidth={1.5} />
+          <IconReceipt color={colorTokens.textSecondary} size={28} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
             Todavía no tenés listas de compra. Creá una desde "Nueva compra".
           </Text>
@@ -39,7 +46,7 @@ export function RecentListsSection({ lists, onPressList }: RecentListsSectionPro
               padding="$3"
               alignItems="center"
               gap="$3"
-              pressStyle={{ opacity: 0.7 }}
+              pressStyle={rowPressStyle}
             >
               <YStack
                 width={40}
@@ -49,7 +56,11 @@ export function RecentListsSection({ lists, onPressList }: RecentListsSectionPro
                 alignItems="center"
                 justifyContent="center"
               >
-                <IconReceipt color="#0F172A" size={20} strokeWidth={1.75} />
+                <IconReceipt
+                  color={colorTokens.textPrimary}
+                  size={20}
+                  strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                />
               </YStack>
 
               <YStack flex={1} gap="$0.5">
@@ -65,7 +76,11 @@ export function RecentListsSection({ lists, onPressList }: RecentListsSectionPro
                 <Text fontFamily="$heading" fontSize="$sm" color="$primary">
                   {list.totalEstimate}
                 </Text>
-                <IconChevronRight color="#64748B" size={18} strokeWidth={1.75} />
+                <IconChevronRight
+                  color={colorTokens.textSecondary}
+                  size={18}
+                  strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                />
               </YStack>
             </XStack>
           ))}

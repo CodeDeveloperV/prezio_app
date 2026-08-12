@@ -1,6 +1,18 @@
 import type { PropsWithChildren } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { YStack } from 'tamagui';
+
+import { colorTokens } from '../../app/theme/tokens';
+
+const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: colorTokens.background,
+  },
+  contentContainer: {
+    flexGrow: 1,
+  },
+});
 
 interface ScreenContainerProps {
   scroll?: boolean;
@@ -23,8 +35,8 @@ export function ScreenContainer({
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: 'white' }}
-      contentContainerStyle={{ flexGrow: 1 }}
+      style={styles.scrollView}
+      contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
       {content}

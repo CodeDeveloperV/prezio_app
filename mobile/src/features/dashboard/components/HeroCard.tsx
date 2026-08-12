@@ -1,11 +1,13 @@
 import { Button, Card, Text, XStack, YStack } from 'tamagui';
 
-import { IconPlus, IconShoppingCart } from '../../../app/theme/icons';
+import { DEFAULT_ICON_STROKE_WIDTH, STRONG_ICON_STROKE_WIDTH, IconPlus, IconShoppingCart } from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 
 interface HeroCardProps {
   hasActiveSession: boolean;
   onPressPrimaryAction: () => void;
 }
+const primaryPressStyle = { backgroundColor: '$primaryPress' };
 
 /**
  * Dashboard hero: either resumes an active shopping session or offers to
@@ -31,7 +33,7 @@ export function HeroCard({ hasActiveSession, onPressPrimaryAction }: HeroCardPro
           alignItems="center"
           justifyContent="center"
         >
-          <IconShoppingCart color="white" size={26} strokeWidth={1.75} />
+          <IconShoppingCart color={colorTokens.white} size={26} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
         </YStack>
 
         <YStack flex={1} gap="$1">
@@ -49,12 +51,12 @@ export function HeroCard({ hasActiveSession, onPressPrimaryAction }: HeroCardPro
       <Button
         onPress={onPressPrimaryAction}
         backgroundColor="$primary"
-        pressStyle={{ backgroundColor: '$primaryPress' }}
+        pressStyle={primaryPressStyle}
         borderRadius="$3"
         size="$5"
-        icon={<IconPlus color="white" size={20} strokeWidth={2} />}
+        icon={<IconPlus color={colorTokens.white} size={20} strokeWidth={STRONG_ICON_STROKE_WIDTH} />}
       >
-        <Text fontFamily="$heading" fontSize="$md" color="white">
+        <Text fontFamily="$heading" fontSize="$md" color="$white">
           {hasActiveSession ? 'Continuar compra' : 'Nueva compra'}
         </Text>
       </Button>

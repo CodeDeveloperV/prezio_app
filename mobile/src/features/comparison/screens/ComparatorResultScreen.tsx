@@ -4,7 +4,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
-import { IconAlertTriangle, IconChevronRight } from '../../../app/theme/icons';
+import { DEFAULT_ICON_STROKE_WIDTH, IconAlertTriangle, IconChevronRight } from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import type { ComparisonStackParamList } from '../../../app/navigation/types';
 
 import type { BranchComparisonResult, ProductComparisonLine, ProductComparisonStatus } from '@prezio/shared-types';
@@ -64,7 +65,11 @@ function BranchResultCard({
           </Text>
           {!result.comparable && (
             <XStack alignItems="center" gap="$1">
-              <IconAlertTriangle color="#F59E0B" size={14} strokeWidth={1.75} />
+              <IconAlertTriangle
+                color={colorTokens.warning}
+                size={14}
+                strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+              />
               <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
                 Cobertura insuficiente para comparar
               </Text>
@@ -87,7 +92,11 @@ function BranchResultCard({
           <Text fontFamily="$heading" fontSize="$lg" color="$color">
             ${result.total}
           </Text>
-          <IconChevronRight color="#64748B" size={18} strokeWidth={1.75} />
+          <IconChevronRight
+            color={colorTokens.textSecondary}
+            size={18}
+            strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+          />
         </XStack>
       </XStack>
 

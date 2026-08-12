@@ -51,7 +51,7 @@ const bodyFont = createFont({
   },
 });
 
-const tokens = createTokens({
+  const tokens = createTokens({
   color: {
     primary: colorTokens.primary,
     primaryPress: colorTokens.primaryPress,
@@ -63,7 +63,7 @@ const tokens = createTokens({
     danger: colorTokens.danger,
     warning: colorTokens.warning,
     border: colorTokens.border,
-    white: '#FFFFFF',
+    white: colorTokens.white,
   },
   space: { ...spaceScale, true: spaceScale['4'] },
   size: { ...spaceScale, true: spaceScale['4'] },
