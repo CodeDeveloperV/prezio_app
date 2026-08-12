@@ -291,10 +291,18 @@ export interface PriceConflictResponse {
   version: number;
 }
 
+export type ShoppingListStatus = 'active' | 'archived';
+
+export type ShoppingListMemberRole = 'owner' | 'editor';
+
+export type ShoppingListInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked';
+
 export interface ShoppingList {
   id: number;
   owner_user_id: number;
   name: string;
+  status: ShoppingListStatus;
+  created_at: string;
 }
 
 export interface ShoppingListCreate {
@@ -308,11 +316,92 @@ export interface ShoppingListItem {
   quantity: number;
   checked: boolean;
   added_by: number;
+  version: number;
 }
 
 export interface ShoppingListItemCreate {
   product_id: number;
   quantity?: number;
+  client_request_id?: string;
+}
+
+// Same optimistic-concurrency pattern as pricing's PriceUpdateRequest: submit the version you
+// last saw, get a 409 + ShoppingListItemConflictResponse back if it's stale.
+export interface ShoppingListItemUpdate {
+  version: number;
+  quantity?: number;
+  checked?: boolean;
+}
+
+// Returned with HTTP 409 when the submitted item version is stale.
+export interface ShoppingListItemConflictResponse {
+  detail: string;
+  item: ShoppingListItem;
+}
+
+export interface ShoppingListMember {
+  id: number;
+  shopping_list_id: number;
+  user_id: number;
+  role: ShoppingListMemberRole;
+  joined_at: string;
+}
+
+export interface ShoppingListInvitationCreate {
+  invited_email: string;
+}
+
+export interface ShoppingListInvitation {
+  id: number;
+  shopping_list_id: number;
+  invited_email: string;
+  invited_user_id: number | null;
+  invited_by_user_id: number;
+  status: ShoppingListInvitationStatus;
+  created_at: string;
+  responded_at: string | null;
+}
+
+// --- Shopping list real-time sync (WS /shopping-lists/ws, channel shopping_list_updates:{id}) --
+
+export type ShoppingListEventType =
+  | 'item_added'
+  | 'item_updated'
+  | 'item_removed'
+  | 'member_joined'
+  | 'member_left'
+  | 'invitation_accepted'
+  | 'invitation_declined'
+  | 'list_archived';
+
+// Every shopping-list event carries this envelope; `payload` shape depends on `event_type`.
+// The backend is the source of truth -- treat this as a cache-invalidation signal and re-fetch
+// via TanStack Query on any doubt, not as a second copy of state.
+export interface ShoppingListEvent<TPayload = Record<string, unknown>> {
+  event_type: ShoppingListEventType;
+  shopping_list_id: number;
+  entity_id: number | null;
+  version: number | null;
+  timestamp: string;
+  payload: TPayload;
+}
+
+export type ShoppingListItemEvent = ShoppingListEvent<ShoppingListItem>;
+
+// Delivered on a personal channel (user_invitations:{user_id}) so an invitee who isn't yet a
+// list member can still be notified, without broadcasting the invitation to the whole list.
+export interface ShoppingListInvitationCreatedEvent {
+  event_type: 'invitation_created';
+  shopping_list_id: number;
+  entity_id: number;
+  version: null;
+  timestamp: string;
+  payload: {
+    invitation_id: number;
+    shopping_list_id: number;
+    shopping_list_name: string;
+    invited_by_user_id: number;
+  };
 }
 
 // WebSocket event pushed to clients subscribed to a store_product_id topic on /pricing/ws.

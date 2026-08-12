@@ -5,6 +5,7 @@ import { YStack } from 'tamagui';
 
 import { useAuthStore } from '../../shared/store/authStore';
 import { useSessionBootstrap } from '../../features/auth/hooks/useSessionBootstrap';
+import { shoppingListWsClient } from '../../shared/services/ws/shoppingListWsClient';
 import { wsClient } from '../../shared/services/ws/wsClient';
 import { colorTokens } from '../theme/tokens';
 import { AuthStack } from './AuthStack';
@@ -25,7 +26,11 @@ export function RootNavigator() {
   useEffect(() => {
     if (status === 'authenticated') {
       wsClient.connect();
-      return () => wsClient.disconnect();
+      shoppingListWsClient.connect();
+      return () => {
+        wsClient.disconnect();
+        shoppingListWsClient.disconnect();
+      };
     }
     return undefined;
   }, [status]);

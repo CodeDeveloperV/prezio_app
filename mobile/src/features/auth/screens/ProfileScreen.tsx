@@ -10,6 +10,8 @@ import {
   IconBell,
   IconBellRinging,
   IconChevronRight,
+  IconMail,
+  IconReceipt,
   IconUser,
 } from '../../../app/theme/icons';
 import { colorTokens } from '../../../app/theme/tokens';
@@ -46,6 +48,46 @@ export function ProfileScreen({ navigation }: Props) {
         </YStack>
 
         <YStack width="100%" gap="$2">
+          <XStack
+            onPress={() => navigation.navigate('ShoppingLists')}
+            backgroundColor="$surface"
+            borderRadius="$3"
+            padding="$3"
+            alignItems="center"
+            gap="$3"
+            pressStyle={rowPressStyle}
+          >
+            <IconReceipt color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
+              Mis listas
+            </Text>
+            <IconChevronRight
+              color={colorTokens.textSecondary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+          </XStack>
+
+          <XStack
+            onPress={() => navigation.navigate('ShoppingListInvitations')}
+            backgroundColor="$surface"
+            borderRadius="$3"
+            padding="$3"
+            alignItems="center"
+            gap="$3"
+            pressStyle={rowPressStyle}
+          >
+            <IconMail color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
+              Invitaciones
+            </Text>
+            <IconChevronRight
+              color={colorTokens.textSecondary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+          </XStack>
+
           <XStack
             onPress={() => navigation.navigate('Alerts')}
             backgroundColor="$surface"

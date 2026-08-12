@@ -59,4 +59,8 @@ export type ProfileStackParamList = {
   Profile: undefined;
   Alerts: undefined;
   Notifications: undefined;
+  ShoppingLists: undefined;
+  ShoppingListDetail: { shoppingListId: number; shoppingListName: string };
+  InviteMember: { shoppingListId: number };
+  ShoppingListInvitations: undefined;
 };

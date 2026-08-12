@@ -32,6 +32,11 @@ export { default as IconBell } from '@tabler/icons-react-native/IconBell';
 export { default as IconBellRinging } from '@tabler/icons-react-native/IconBellRinging';
 export { default as IconTrash } from '@tabler/icons-react-native/IconTrash';
 export { default as IconPower } from '@tabler/icons-react-native/IconPower';
+export { default as IconUsers } from '@tabler/icons-react-native/IconUsers';
+export { default as IconUserPlus } from '@tabler/icons-react-native/IconUserPlus';
+export { default as IconCrown } from '@tabler/icons-react-native/IconCrown';
+export { default as IconWifi } from '@tabler/icons-react-native/IconWifi';
+export { default as IconWifiOff } from '@tabler/icons-react-native/IconWifiOff';
 
 export const DEFAULT_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.regular;
 export const SUBTLE_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.subtle;
