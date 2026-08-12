@@ -1,0 +1,2 @@
+class StoreBranchNotFound(Exception):
+    pass

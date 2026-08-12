@@ -1,0 +1,11 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "types": ["jest"],
+    // Required for WatermelonDB's @field/@date/@children decorators (used
+    // with Babel's legacy decorators transform, see babel.config.js).
+    "experimentalDecorators": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["**/node_modules", "**/Pods"]
+}
