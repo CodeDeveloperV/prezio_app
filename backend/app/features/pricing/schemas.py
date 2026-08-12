@@ -19,12 +19,21 @@ class StoreProductRead(ORMModel):
     last_verified_by: int | None
 
 
-class PriceHistoryRead(ORMModel):
+class PriceHistoryUpdatedByRead(BaseModel):
+    """Display-friendly identity of who made a price change; `user_id` is kept for
+    traceability but the UI should show `display_name or email`, not the raw id."""
+
+    user_id: int
+    display_name: str | None
+    email: str
+
+
+class PriceHistoryRead(BaseModel):
     id: int
     store_product_id: int
     previous_price: Decimal | None
     new_price: Decimal
-    updated_by: int | None
+    updated_by: PriceHistoryUpdatedByRead | None
     updated_at: datetime
 
 

@@ -87,11 +87,9 @@ async def get_store_product_price_history(
     service: PricingService = Depends(get_pricing_service),
 ) -> list[PriceHistoryRead]:
     try:
-        history = await service.list_price_history(store_product_id)
+        return await service.list_price_history(store_product_id)
     except StoreProductNotFound as exc:
         raise HTTPException(404, "Store product not found") from exc
-
-    return [PriceHistoryRead.model_validate(h) for h in history]
 
 
 @router.get("/users/{user_id}/reputation", response_model=UserReputationRead)

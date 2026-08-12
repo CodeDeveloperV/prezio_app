@@ -262,12 +262,19 @@ export interface StoreProductRead {
 // StoreProductRead has its last_verified_at/by refreshed but version/current_price unchanged.
 // GET /pricing/store-products/{id}/history response is PriceHistoryRead[], newest first.
 
+// user_id is kept for traceability only — the UI should show display_name ?? email.
+export interface PriceHistoryUpdatedByRead {
+  user_id: number;
+  display_name: string | null;
+  email: string;
+}
+
 export interface PriceHistoryRead {
   id: number;
   store_product_id: number;
   previous_price: number | null;
   new_price: number;
-  updated_by: number | null;
+  updated_by: PriceHistoryUpdatedByRead | null;
   updated_at: ISODateTime;
 }
 

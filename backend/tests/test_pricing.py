@@ -238,6 +238,12 @@ async def test_price_history_lists_updates_most_recent_first(async_client: Async
     assert len(body) == 2
     assert body[0]["new_price"] == "3.00"
     assert body[1]["new_price"] == "2.75"
+    # No UserProfile was created for this user, so display_name is null and the email fallback applies.
+    assert body[0]["updated_by"] == {
+        "user_id": body[0]["updated_by"]["user_id"],
+        "display_name": None,
+        "email": PRICER_CREDENTIALS["email"],
+    }
 
 
 async def test_price_history_unknown_store_product_returns_404(async_client: AsyncClient) -> None:

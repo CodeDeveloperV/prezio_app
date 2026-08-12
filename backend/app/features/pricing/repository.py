@@ -2,8 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select, update
+from sqlalchemy.orm import selectinload
 
 from app.features.pricing.models import PriceConfirmation, PriceHistory, StoreProduct
+from app.features.users.models import User
 from app.shared.base_repository import BaseRepository
 
 
@@ -13,10 +15,13 @@ class PriceHistoryRepository(BaseRepository[PriceHistory]):
     async def list_by_store_product(self, store_product_id: int) -> list[PriceHistory]:
         # Ordered by id (not updated_at) since two updates in the same request burst can land
         # on the same timestamp at second-level column precision -- id is monotonic regardless.
+        # selectinload batches the user (and their profile) in two extra queries total,
+        # regardless of how many history rows are returned -- not one query per row.
         result = await self.session.execute(
             select(PriceHistory)
             .where(PriceHistory.store_product_id == store_product_id)
             .order_by(PriceHistory.id.desc())
+            .options(selectinload(PriceHistory.updated_by_user).selectinload(User.profile))
         )
         return list(result.scalars().all())
 

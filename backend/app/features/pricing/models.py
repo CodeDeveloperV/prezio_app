@@ -43,6 +43,7 @@ class PriceHistory(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     store_product: Mapped["StoreProduct"] = relationship(back_populates="price_history")
+    updated_by_user: Mapped["User | None"] = relationship(foreign_keys=[updated_by])  # noqa: F821
 
 
 class PriceConfirmation(Base):

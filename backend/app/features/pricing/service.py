@@ -13,6 +13,7 @@ from app.features.pricing.repository import (
     PriceHistoryRepository,
     StoreProductRepository,
 )
+from app.features.pricing.schemas import PriceHistoryRead, PriceHistoryUpdatedByRead
 from app.features.reputation.enums import ReputationAction
 from app.features.reputation.service import ReputationService
 
@@ -105,11 +106,31 @@ class PricingService:
         await self.db.commit()
         return updated
 
-    async def list_price_history(self, store_product_id: int) -> list[PriceHistory]:
+    async def list_price_history(self, store_product_id: int) -> list[PriceHistoryRead]:
         existing = await self.store_products.get_by_id(store_product_id)
         if existing is None:
             raise StoreProductNotFound(store_product_id)
-        return await self.price_history.list_by_store_product(store_product_id)
+        history = await self.price_history.list_by_store_product(store_product_id)
+        return [self._to_history_read(entry) for entry in history]
+
+    def _to_history_read(self, entry: PriceHistory) -> PriceHistoryRead:
+        updated_by = None
+        if entry.updated_by_user is not None:
+            user = entry.updated_by_user
+            display_name = user.profile.display_name.strip() if user.profile and user.profile.display_name else ""
+            updated_by = PriceHistoryUpdatedByRead(
+                user_id=user.id,
+                display_name=display_name or None,
+                email=user.email,
+            )
+        return PriceHistoryRead(
+            id=entry.id,
+            store_product_id=entry.store_product_id,
+            previous_price=entry.previous_price,
+            new_price=entry.new_price,
+            updated_by=updated_by,
+            updated_at=entry.updated_at,
+        )
 
     async def get_reputation(self, user_id: int) -> int:
         return await self.price_confirmations.count_by_user(user_id)
