@@ -2,20 +2,27 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { DashboardScreen } from '../../features/dashboard/DashboardScreen';
 import { HistoryScreen } from '../../features/history/HistoryScreen';
-import { ProfileScreen } from '../../features/auth/screens/ProfileScreen';
 import {
   IconHistory,
   IconHome2,
   IconScale,
   IconShoppingCart,
   IconUser,
+  DEFAULT_ICON_STROKE_WIDTH,
 } from '../theme/icons';
-import { colorTokens } from '../theme/tokens';
+import { colorTokens, fontFamily, fontSizeScale } from '../theme/tokens';
 import { ComparisonStack } from './ComparisonStack';
+import { ProfileStack } from './ProfileStack';
 import { ShoppingSessionStack } from './ShoppingSessionStack';
 import type { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+
+function createTabBarIcon(Icon: typeof IconHome2) {
+  return ({ color, size }: { color: string; size: number }) => (
+    <Icon color={color} size={size} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+  );
+}
 
 export function MainTabs() {
   return (
@@ -24,8 +31,11 @@ export function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: colorTokens.primary,
         tabBarInactiveTintColor: colorTokens.textSecondary,
-        tabBarLabelStyle: { fontFamily: 'Poppins-Regular', fontSize: 11 },
-        tabBarStyle: { backgroundColor: colorTokens.background },
+        tabBarLabelStyle: { fontFamily: fontFamily.body, fontSize: fontSizeScale.xs },
+        tabBarStyle: {
+          backgroundColor: colorTokens.background,
+          borderTopColor: colorTokens.border,
+        },
       }}
     >
       <Tab.Screen
@@ -33,9 +43,7 @@ export function MainTabs() {
         component={DashboardScreen}
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <IconHome2 color={color} size={size} strokeWidth={1.75} />
-          ),
+          tabBarIcon: createTabBarIcon(IconHome2),
         }}
       />
       <Tab.Screen
@@ -43,9 +51,7 @@ export function MainTabs() {
         component={ShoppingSessionStack}
         options={{
           title: 'Nueva compra',
-          tabBarIcon: ({ color, size }) => (
-            <IconShoppingCart color={color} size={size} strokeWidth={1.75} />
-          ),
+          tabBarIcon: createTabBarIcon(IconShoppingCart),
         }}
       />
       <Tab.Screen
@@ -53,9 +59,7 @@ export function MainTabs() {
         component={ComparisonStack}
         options={{
           title: 'Comparar',
-          tabBarIcon: ({ color, size }) => (
-            <IconScale color={color} size={size} strokeWidth={1.75} />
-          ),
+          tabBarIcon: createTabBarIcon(IconScale),
         }}
       />
       <Tab.Screen
@@ -63,19 +67,15 @@ export function MainTabs() {
         component={HistoryScreen}
         options={{
           title: 'Historial',
-          tabBarIcon: ({ color, size }) => (
-            <IconHistory color={color} size={size} strokeWidth={1.75} />
-          ),
+          tabBarIcon: createTabBarIcon(IconHistory),
         }}
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <IconUser color={color} size={size} strokeWidth={1.75} />
-          ),
+          tabBarIcon: createTabBarIcon(IconUser),
         }}
       />
     </Tab.Navigator>

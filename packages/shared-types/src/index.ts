@@ -382,3 +382,65 @@ export interface ShoppingListComparisonResult {
   most_expensive_comparable_branch_id: number | null;
   estimated_savings: number | null;
 }
+
+// --- Price alerts (POST/GET/PATCH/DELETE /alerts) --------------------------------------------
+
+// Scope is layered by how many of store_id/store_branch_id are set: neither means "any branch
+// of any chain", store_id alone means "any branch of that chain", store_branch_id means that
+// specific branch only. The two are mutually exclusive -- sending both is a 400.
+export interface PriceAlertCreateRequest {
+  product_id: number;
+  target_price: number;
+  store_id?: number | null;
+  store_branch_id?: number | null;
+}
+
+export interface PriceAlertUpdateRequest {
+  target_price?: number;
+  active?: boolean;
+}
+
+// Deliberately no ACTIVE/TRIGGERED enum: `is_below_threshold` is the re-armable
+// threshold-crossing state (flips back to false once the price rises back above
+// target_price, so the next crossing below notifies again); `active` is an independent on/off
+// switch. `target_price` comes back as a string -- the backend schema types it as a Python
+// Decimal, which Pydantic serializes as a string on the wire (not a JSON number).
+export interface PriceAlertRead {
+  id: number;
+  user_id: number;
+  product_id: number;
+  product_name: string;
+  store_id: number | null;
+  store_branch_id: number | null;
+  target_price: string;
+  active: boolean;
+  is_below_threshold: boolean;
+  last_triggered_at: ISODateTime | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+// --- Notifications (GET /notifications, PATCH /notifications/...) ----------------------------
+
+// Kept generic on purpose -- the same inbox serves future notification types beyond price
+// alerts (collaborative lists, coupons, promotions, system messages).
+export type NotificationType = 'price_alert' | 'collaborative_list' | 'coupon' | 'promotion' | 'system';
+
+export interface NotificationRead {
+  id: number;
+  user_id: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  related_entity_type: string | null;
+  related_entity_id: number | null;
+  // Only ever set when type === 'price_alert'.
+  alert_id: number | null;
+  metadata: Record<string, unknown> | null;
+  read_at: ISODateTime | null;
+  created_at: ISODateTime;
+}
+
+export interface MarkAllReadResponse {
+  marked_read: number;
+}

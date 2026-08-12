@@ -1,15 +1,31 @@
 import { useState } from 'react';
-import { Image } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
-import { IconCheck, IconEdit, IconFlag, IconHistory } from '../../../app/theme/icons';
+import {
+  DEFAULT_ICON_STROKE_WIDTH,
+  STRONG_ICON_STROKE_WIDTH,
+  IconBellRinging,
+  IconCheck,
+  IconEdit,
+  IconFlag,
+  IconHistory,
+} from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import { useReportIncorrectBarcodeMutation } from '../../catalog/hooks/useCatalogMutations';
 import { useConfirmMatchMutation } from '../../pricing/hooks/usePricingMutations';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 
 type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'ScanResult'>;
+const styles = StyleSheet.create({
+  productImage: {
+    width: 160,
+    height: 160,
+    borderRadius: 12,
+  },
+});
 
 function formatDate(iso: string | null): string {
   if (!iso) {
@@ -58,13 +74,21 @@ export function ScanResultScreen({ route, navigation }: Props) {
     navigation.navigate('PriceHistory', { storeProductId: storeProduct.id });
   };
 
+  const handleCreateAlert = () => {
+    navigation.navigate('CreateAlert', {
+      productId: product.id,
+      productName: product.canonical_name,
+      storeBranchId: storeProduct?.store_branch_id ?? null,
+    });
+  };
+
   return (
     <ScreenContainer>
       <YStack alignItems="center" gap="$3">
         {product.image_url ? (
           <Image
             source={{ uri: product.image_url }}
-            style={{ width: 160, height: 160, borderRadius: 12 }}
+            style={styles.productImage}
             resizeMode="contain"
           />
         ) : (
@@ -109,8 +133,8 @@ export function ScanResultScreen({ route, navigation }: Props) {
         <Button
           disabled={!storeProduct}
           backgroundColor="$primary"
-          color="white"
-          icon={<IconCheck color="white" size={18} strokeWidth={2} />}
+          color="$white"
+          icon={<IconCheck color={colorTokens.white} size={18} strokeWidth={STRONG_ICON_STROKE_WIDTH} />}
           onPress={handleConfirmMatch}
         >
           {confirmedJustNow ? 'Confirmado' : 'Coincide'}
@@ -119,17 +143,31 @@ export function ScanResultScreen({ route, navigation }: Props) {
         <Button
           disabled={!storeProduct}
           backgroundColor="$surface"
-          icon={<IconEdit color="#0F172A" size={18} strokeWidth={1.75} />}
+          icon={<IconEdit color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
           onPress={handlePriceChanged}
         >
           Cambió el precio
+        </Button>
+
+        <Button
+          backgroundColor="$surface"
+          icon={
+            <IconBellRinging
+              color={colorTokens.textPrimary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+          }
+          onPress={handleCreateAlert}
+        >
+          Crear alerta
         </Button>
 
         <XStack gap="$2">
           <Button
             flex={1}
             backgroundColor="$surface"
-            icon={<IconFlag color="#0F172A" size={18} strokeWidth={1.75} />}
+            icon={<IconFlag color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
             onPress={handleReportIncorrect}
           >
             Producto incorrecto
@@ -138,7 +176,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
             flex={1}
             disabled={!storeProduct}
             backgroundColor="$surface"
-            icon={<IconHistory color="#0F172A" size={18} strokeWidth={1.75} />}
+            icon={<IconHistory color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
             onPress={handleViewHistory}
           >
             Ver historial

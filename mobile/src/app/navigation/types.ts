@@ -50,4 +50,13 @@ export type ShoppingSessionStackParamList = {
   };
   PriceHistory: { storeProductId: number };
   PriceUpdate: { storeProductId: number; currentPrice: string; version: number };
+  CreateAlert: { productId: number; productName: string; storeBranchId?: number | null };
+};
+
+// Nested stack rendered inside the "Profile" tab: the profile screen itself plus the
+// alerts/notifications inbox screens it links out to.
+export type ProfileStackParamList = {
+  Profile: undefined;
+  Alerts: undefined;
+  Notifications: undefined;
 };

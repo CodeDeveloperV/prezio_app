@@ -3,12 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.alert_scheduler import alert_scheduler
 from app.core.config import get_settings
 from app.core.websocket_manager import redis_listener
+from app.features.alerts.router import router as alerts_router
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.comparison.router import router as comparison_router
 from app.features.moderation.router import router as moderation_router
+from app.features.notifications.router import router as notifications_router
 from app.features.pricing.router import router as pricing_router
 from app.features.reputation.router import router as reputation_router
 from app.features.shopping_lists.router import router as shopping_lists_router
@@ -21,7 +24,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     redis_listener.start()
+    alert_scheduler.start()
     yield
+    await alert_scheduler.stop()
     await redis_listener.stop()
 
 
@@ -44,6 +49,8 @@ app.include_router(moderation_router)
 app.include_router(pricing_router)
 app.include_router(reputation_router)
 app.include_router(shopping_lists_router)
+app.include_router(notifications_router)
+app.include_router(alerts_router)
 
 
 @app.get("/health")

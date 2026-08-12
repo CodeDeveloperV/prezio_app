@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # and `fresh_coverage_percentage`.
     price_freshness_days: int = 7
 
+    # How often AlertScheduler runs one PriceAlertEvaluator pass. A plain asyncio loop today
+    # (see app.core.alert_scheduler) -- this interval is the only thing that matters if that
+    # loop is later replaced by Celery/cron/a dedicated worker.
+    alert_check_interval_seconds: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

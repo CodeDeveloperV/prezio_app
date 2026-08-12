@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { CreateAlertScreen } from '../../features/alerts/screens/CreateAlertScreen';
 import { BranchSelectScreen } from '../../features/shopping-session/screens/BranchSelectScreen';
 import { CreateProductScreen } from '../../features/shopping-session/screens/CreateProductScreen';
 import { PriceHistoryScreen } from '../../features/shopping-session/screens/PriceHistoryScreen';
@@ -40,6 +41,11 @@ export function ShoppingSessionStack() {
         name="PriceUpdate"
         component={PriceUpdateScreen}
         options={{ title: 'Actualizar precio', presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="CreateAlert"
+        component={CreateAlertScreen}
+        options={{ title: 'Crear alerta', presentation: 'modal' }}
       />
     </Stack.Navigator>
   );

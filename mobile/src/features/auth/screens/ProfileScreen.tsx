@@ -1,11 +1,24 @@
-import { Button, Text, YStack } from 'tamagui';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { useLogout } from '../hooks/useLogout';
-import { IconUser } from '../../../app/theme/icons';
+import {
+  DEFAULT_ICON_STROKE_WIDTH,
+  SUBTLE_ICON_STROKE_WIDTH,
+  IconBell,
+  IconBellRinging,
+  IconChevronRight,
+  IconUser,
+} from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
+import type { ProfileStackParamList } from '../../../app/navigation/types';
 
-export function ProfileScreen() {
+type Props = NativeStackScreenProps<ProfileStackParamList, 'Profile'>;
+const rowPressStyle = { opacity: 0.7 };
+
+export function ProfileScreen({ navigation }: Props) {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
 
@@ -20,7 +33,7 @@ export function ProfileScreen() {
           alignItems="center"
           justifyContent="center"
         >
-          <IconUser color="#0F172A" size={32} strokeWidth={1.5} />
+          <IconUser color={colorTokens.textPrimary} size={32} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
         </YStack>
 
         <YStack alignItems="center" gap="$1">
@@ -30,6 +43,52 @@ export function ProfileScreen() {
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
             Prezio: tu aliado en cada compra
           </Text>
+        </YStack>
+
+        <YStack width="100%" gap="$2">
+          <XStack
+            onPress={() => navigation.navigate('Alerts')}
+            backgroundColor="$surface"
+            borderRadius="$3"
+            padding="$3"
+            alignItems="center"
+            gap="$3"
+            pressStyle={rowPressStyle}
+          >
+            <IconBellRinging
+              color={colorTokens.textPrimary}
+              size={20}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
+              Mis alertas
+            </Text>
+            <IconChevronRight
+              color={colorTokens.textSecondary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+          </XStack>
+
+          <XStack
+            onPress={() => navigation.navigate('Notifications')}
+            backgroundColor="$surface"
+            borderRadius="$3"
+            padding="$3"
+            alignItems="center"
+            gap="$3"
+            pressStyle={rowPressStyle}
+          >
+            <IconBell color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
+              Notificaciones
+            </Text>
+            <IconChevronRight
+              color={colorTokens.textSecondary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+          </XStack>
         </YStack>
 
         <Button
