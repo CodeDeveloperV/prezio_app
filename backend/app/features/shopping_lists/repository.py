@@ -16,3 +16,9 @@ class ShoppingListRepository(BaseRepository[ShoppingList]):
 
 class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
     model = ShoppingListItem
+
+    async def list_by_shopping_list(self, shopping_list_id: int) -> list[ShoppingListItem]:
+        result = await self.session.execute(
+            select(ShoppingListItem).where(ShoppingListItem.shopping_list_id == shopping_list_id)
+        )
+        return list(result.scalars().all())

@@ -2,6 +2,7 @@ import type {
   BarcodeType,
   ProductMatchCandidate,
   ScanProductDetails,
+  ShoppingListComparisonResult,
   StoreProductRead,
 } from '@prezio/shared-types';
 
@@ -13,8 +14,16 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   NewPurchase: undefined;
+  Comparator: undefined;
   History: undefined;
   Profile: undefined;
+};
+
+// Nested stack rendered inside the "Comparator" tab: pick a shopping list + city, then show
+// the per-branch totals returned by POST /comparison/shopping-lists/{id}/compare.
+export type ComparisonStackParamList = {
+  ComparatorSetup: undefined;
+  ComparatorResult: { result: ShoppingListComparisonResult };
 };
 
 // Nested stack rendered inside the "NewPurchase" tab: pick a branch, scan a barcode, then

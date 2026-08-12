@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.websocket_manager import redis_listener
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
+from app.features.comparison.router import router as comparison_router
 from app.features.moderation.router import router as moderation_router
 from app.features.pricing.router import router as pricing_router
 from app.features.reputation.router import router as reputation_router
@@ -38,6 +39,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(stores_router)
 app.include_router(catalog_router)
+app.include_router(comparison_router)
 app.include_router(moderation_router)
 app.include_router(pricing_router)
 app.include_router(reputation_router)

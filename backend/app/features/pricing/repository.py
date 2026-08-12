@@ -73,6 +73,21 @@ class StoreProductRepository(BaseRepository[StoreProduct]):
         result = await self.session.execute(select(StoreProduct).where(StoreProduct.product_id == product_id))
         return list(result.scalars().all())
 
+    async def list_by_branches_and_products(
+        self, store_branch_ids: list[int], product_ids: list[int]
+    ) -> list[StoreProduct]:
+        """Bulk lookup backing the store comparator: one query for every (branch, product)
+        listing across all candidate branches, instead of N+1 `get_by_branch_and_product` calls."""
+        if not store_branch_ids or not product_ids:
+            return []
+        result = await self.session.execute(
+            select(StoreProduct).where(
+                StoreProduct.store_branch_id.in_(store_branch_ids),
+                StoreProduct.product_id.in_(product_ids),
+            )
+        )
+        return list(result.scalars().all())
+
     async def mark_verified(
         self, store_product_id: int, verified_at: datetime, verified_by: int
     ) -> StoreProduct | None:

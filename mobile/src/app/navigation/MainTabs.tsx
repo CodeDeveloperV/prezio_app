@@ -6,10 +6,12 @@ import { ProfileScreen } from '../../features/auth/screens/ProfileScreen';
 import {
   IconHistory,
   IconHome2,
+  IconScale,
   IconShoppingCart,
   IconUser,
 } from '../theme/icons';
 import { colorTokens } from '../theme/tokens';
+import { ComparisonStack } from './ComparisonStack';
 import { ShoppingSessionStack } from './ShoppingSessionStack';
 import type { MainTabParamList } from './types';
 
@@ -43,6 +45,16 @@ export function MainTabs() {
           title: 'Nueva compra',
           tabBarIcon: ({ color, size }) => (
             <IconShoppingCart color={color} size={size} strokeWidth={1.75} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Comparator"
+        component={ComparisonStack}
+        options={{
+          title: 'Comparar',
+          tabBarIcon: ({ color, size }) => (
+            <IconScale color={color} size={size} strokeWidth={1.75} />
           ),
         }}
       />

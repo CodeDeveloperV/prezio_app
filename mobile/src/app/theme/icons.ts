@@ -23,5 +23,8 @@ export { default as IconCheck } from '@tabler/icons-react-native/IconCheck';
 export { default as IconX } from '@tabler/icons-react-native/IconX';
 export { default as IconFlag } from '@tabler/icons-react-native/IconFlag';
 export { default as IconEdit } from '@tabler/icons-react-native/IconEdit';
+export { default as IconScale } from '@tabler/icons-react-native/IconScale';
+export { default as IconMapPin } from '@tabler/icons-react-native/IconMapPin';
+export { default as IconAlertTriangle } from '@tabler/icons-react-native/IconAlertTriangle';
 
 export const DEFAULT_ICON_STROKE_WIDTH = 1.75;

@@ -64,6 +64,12 @@ class ProductRepository(BaseRepository[Product]):
         result = await self.session.execute(select(Product).where(Product.status == status))
         return list(result.scalars().all())
 
+    async def list_by_ids(self, product_ids: list[int]) -> list[Product]:
+        if not product_ids:
+            return []
+        result = await self.session.execute(select(Product).where(Product.id.in_(product_ids)))
+        return list(result.scalars().all())
+
 
 class ProductBarcodeRepository(BaseRepository[ProductBarcode]):
     model = ProductBarcode

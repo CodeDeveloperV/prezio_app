@@ -315,3 +315,63 @@ export interface PriceUpdateEvent {
   price: number;
   version: number;
 }
+
+// --- Store comparator (POST /comparison/shopping-lists/{id}/compare) ----------------------
+
+export type ProductComparisonStatus =
+  | 'available'
+  | 'missing_product'
+  | 'price_unavailable'
+  | 'stale_price'
+  | 'unavailable';
+
+// At least one of `city`/`store_branch_ids` is required; `store_branch_ids` wins when both
+// are sent. Reserved for a future `latitude`/`longitude` + `radius_km` pair once the app has
+// geolocation -- see backend `CompareShoppingListRequest`.
+export interface CompareShoppingListRequest {
+  city?: string | null;
+  store_branch_ids?: number[] | null;
+}
+
+export interface ProductComparisonLine {
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  status: ProductComparisonStatus;
+  unit_price: number | null;
+  subtotal: number | null;
+}
+
+export interface BranchComparisonResult {
+  store_branch_id: number;
+  store_id: number;
+  store_name: string;
+  branch_name: string;
+  city: string;
+  currency: string;
+  total: number;
+  total_known: number;
+  found_products_count: number;
+  missing_products_count: number;
+  price_unavailable_count: number;
+  stale_prices_count: number;
+  unavailable_products_count: number;
+  // Usable-price coverage: AVAILABLE + STALE_PRICE / total_known.
+  coverage_percentage: number;
+  // Fresh-price coverage: AVAILABLE only / total_known -- stricter than coverage_percentage.
+  fresh_coverage_percentage: number;
+  has_stale_prices: boolean;
+  comparable: boolean;
+  savings_vs_most_expensive: number | null;
+  lines: ProductComparisonLine[];
+}
+
+export interface ShoppingListComparisonResult {
+  shopping_list_id: number;
+  min_coverage_threshold: number;
+  min_fresh_coverage_threshold: number;
+  results: BranchComparisonResult[];
+  cheapest_comparable_branch_id: number | null;
+  most_expensive_comparable_branch_id: number | null;
+  estimated_savings: number | null;
+}
