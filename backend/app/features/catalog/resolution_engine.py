@@ -24,6 +24,8 @@ from app.features.catalog.product_matching_service import ProductMatchingService
 from app.features.catalog.repository import BrandRepository, ProductBarcodeRepository, ProductRepository
 from app.features.pricing.models import StoreProduct
 from app.features.pricing.repository import StoreProductRepository
+from app.features.reputation.enums import ReputationAction
+from app.features.reputation.service import ReputationService
 from app.shared.enums import ModerationStatus
 
 
@@ -72,6 +74,7 @@ class CatalogResolutionEngine:
         store_products: StoreProductRepository,
         brands: BrandRepository,
         matching: ProductMatchingService,
+        reputation: ReputationService,
     ) -> None:
         self.db = db
         self.products = products
@@ -79,6 +82,7 @@ class CatalogResolutionEngine:
         self.store_products = store_products
         self.brands = brands
         self.matching = matching
+        self.reputation = reputation
 
     async def resolve(
         self,
@@ -221,14 +225,19 @@ class CatalogResolutionEngine:
         created_by: int,
     ) -> Product:
         """Only reached once the engine has already returned UNKNOWN (or the user rejected
-        every POSSIBLE_MATCHES candidate): creates a new Product with status PENDING and
-        attaches the scanned barcode to it. Attaching is idempotent for the same reasons as
-        `confirm_candidate`.
+        every POSSIBLE_MATCHES candidate): creates a new Product and attaches the scanned barcode
+        to it. Attaching is idempotent for the same reasons as `confirm_candidate`.
+
+        A sufficiently reputable contributor's product skips the PENDING moderation queue
+        entirely (see `ReputationService.qualifies_for_auto_approval`) -- everyone else's still
+        needs a moderator to approve it before it earns `CREATE_PRODUCT_APPROVED` points.
         """
         resolved_brand_id = brand_id
         if resolved_brand_id is None and brand_name:
             brand = await self.brands.get_or_create_by_name(brand_name)
             resolved_brand_id = brand.id
+
+        auto_approved = await self.reputation.qualifies_for_auto_approval(created_by)
 
         product = await self.products.add(
             Product(
@@ -238,10 +247,19 @@ class CatalogResolutionEngine:
                 presentation=presentation,
                 image_url=image_url,
                 recognition_type=RecognitionType.MANUAL,
-                status=ModerationStatus.PENDING,
+                status=ModerationStatus.APPROVED if auto_approved else ModerationStatus.PENDING,
+                reviewed_at=_utcnow() if auto_approved else None,
                 created_by=created_by,
             )
         )
+
+        if auto_approved:
+            await self.reputation.award(
+                user_id=created_by,
+                action=ReputationAction.CREATE_PRODUCT_APPROVED,
+                reference_type="product",
+                reference_id=product.id,
+            )
 
         existing = await self.barcodes.find_conflict(product.id, barcode, store_id)
         if existing is None:

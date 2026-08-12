@@ -24,6 +24,8 @@ from app.features.catalog.schemas import (
 )
 from app.features.catalog.service import CatalogService
 from app.features.pricing.repository import StoreProductRepository
+from app.features.reputation.repository import ReputationEventRepository
+from app.features.reputation.service import ReputationService
 from app.features.stores.exceptions import StoreBranchNotFound
 from app.features.stores.repository import StoreBranchRepository
 from app.features.users.models import User
@@ -45,6 +47,7 @@ def get_recognition_service(db: AsyncSession = Depends(get_db)) -> ProductRecogn
         StoreProductRepository(db),
         brands,
         ProductMatchingService(products),
+        ReputationService(ReputationEventRepository(db)),
     )
     return ProductRecognitionService(engine, ProductBarcodeRepository(db), StoreBranchRepository(db), brands)
 

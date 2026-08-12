@@ -13,6 +13,8 @@ from app.features.pricing.repository import (
     PriceHistoryRepository,
     StoreProductRepository,
 )
+from app.features.reputation.enums import ReputationAction
+from app.features.reputation.service import ReputationService
 
 
 class PricingService:
@@ -23,12 +25,14 @@ class PricingService:
         price_history: PriceHistoryRepository,
         price_confirmations: PriceConfirmationRepository,
         redis: Redis,
+        reputation: ReputationService,
     ) -> None:
         self.db = db
         self.store_products = store_products
         self.price_history = price_history
         self.price_confirmations = price_confirmations
         self.redis = redis
+        self.reputation = reputation
 
     async def update_price(
         self,
@@ -60,6 +64,15 @@ class PricingService:
                 updated_by=changed_by_user_id,
             )
         )
+        # The optimistic-concurrency check above already guarantees this update wasn't racing
+        # a stale read, so "correctly" here means "passed that check" -- no separate
+        # correctness judgement is stored (same rationale as price confirmations).
+        await self.reputation.award(
+            user_id=changed_by_user_id,
+            action=ReputationAction.UPDATE_PRICE,
+            reference_type="store_product",
+            reference_id=store_product_id,
+        )
         await self.db.commit()
 
         await self._publish_price_update(updated)
@@ -82,6 +95,12 @@ class PricingService:
                 confirmed_price=updated.current_price,
                 confirmed_at=now,
             )
+        )
+        await self.reputation.award(
+            user_id=confirmed_by_user_id,
+            action=ReputationAction.CONFIRM_PRICE,
+            reference_type="store_product",
+            reference_id=store_product_id,
         )
         await self.db.commit()
         return updated

@@ -20,6 +20,8 @@ from app.features.pricing.repository import (
     PriceHistoryRepository,
     StoreProductRepository,
 )
+from app.features.reputation.enums import ReputationAction
+from app.features.reputation.service import ReputationService
 from app.shared.enums import ModerationStatus
 
 
@@ -42,6 +44,7 @@ class ModerationService:
         store_products: StoreProductRepository,
         price_history: PriceHistoryRepository,
         price_confirmations: PriceConfirmationRepository,
+        reputation: ReputationService,
     ) -> None:
         self.db = db
         self.products = products
@@ -51,6 +54,7 @@ class ModerationService:
         self.store_products = store_products
         self.price_history = price_history
         self.price_confirmations = price_confirmations
+        self.reputation = reputation
 
     # --- queues -----------------------------------------------------------------
 
@@ -73,6 +77,13 @@ class ModerationService:
         product.status = ModerationStatus.APPROVED
         product.reviewed_by = moderator_id
         product.reviewed_at = _utcnow()
+        if product.created_by is not None:
+            await self.reputation.award(
+                user_id=product.created_by,
+                action=ReputationAction.CREATE_PRODUCT_APPROVED,
+                reference_type="product",
+                reference_id=product.id,
+            )
         await self.db.commit()
         # `updated_at` is a server-computed onupdate column -- refresh so the ORM instance
         # reflects the value the DB just generated instead of leaving it expired.
@@ -241,6 +252,13 @@ class ModerationService:
         merge.status = ModerationStatus.APPROVED
         merge.reviewed_by = moderator_id
         merge.reviewed_at = _utcnow()
+        if merge.proposed_by is not None:
+            await self.reputation.award(
+                user_id=merge.proposed_by,
+                action=ReputationAction.REPORT_DUPLICATE_APPROVED,
+                reference_type="product_merge",
+                reference_id=merge.id,
+            )
         await self.db.commit()
         return merge
 

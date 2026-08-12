@@ -20,9 +20,22 @@ from app.features.pricing.schemas import (
     UserReputationRead,
 )
 from app.features.pricing.service import PricingService
+from app.features.reputation.repository import ReputationEventRepository
+from app.features.reputation.service import ReputationService
 from app.features.users.models import User
 
 router = APIRouter(prefix="/pricing", tags=["pricing"])
+
+
+def get_pricing_service(db: AsyncSession = Depends(get_db), redis: Redis = Depends(get_redis)) -> PricingService:
+    return PricingService(
+        db,
+        StoreProductRepository(db),
+        PriceHistoryRepository(db),
+        PriceConfirmationRepository(db),
+        redis,
+        ReputationService(ReputationEventRepository(db)),
+    )
 
 
 @router.post("/store-products/{store_product_id}/price", response_model=StoreProductRead)
@@ -30,12 +43,8 @@ async def update_store_product_price(
     store_product_id: int,
     payload: PriceUpdateRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
+    service: PricingService = Depends(get_pricing_service),
 ) -> StoreProductRead | JSONResponse:
-    service = PricingService(
-        db, StoreProductRepository(db), PriceHistoryRepository(db), PriceConfirmationRepository(db), redis
-    )
     try:
         updated = await service.update_price(
             store_product_id, payload.price, payload.version, current_user.id
@@ -60,13 +69,9 @@ async def update_store_product_price(
 async def confirm_store_product_match(
     store_product_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
+    service: PricingService = Depends(get_pricing_service),
 ) -> StoreProductRead:
     """"✓ Coincide": user confirmed the displayed price is still accurate."""
-    service = PricingService(
-        db, StoreProductRepository(db), PriceHistoryRepository(db), PriceConfirmationRepository(db), redis
-    )
     try:
         updated = await service.confirm_match(store_product_id, current_user.id)
     except StoreProductNotFound as exc:
@@ -79,12 +84,8 @@ async def confirm_store_product_match(
 async def get_store_product_price_history(
     store_product_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
+    service: PricingService = Depends(get_pricing_service),
 ) -> list[PriceHistoryRead]:
-    service = PricingService(
-        db, StoreProductRepository(db), PriceHistoryRepository(db), PriceConfirmationRepository(db), redis
-    )
     try:
         history = await service.list_price_history(store_product_id)
     except StoreProductNotFound as exc:
@@ -97,14 +98,12 @@ async def get_store_product_price_history(
 async def get_user_reputation(
     user_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
+    service: PricingService = Depends(get_pricing_service),
 ) -> UserReputationRead:
     """Reputation is simply how many price confirmations a user has made -- every "✓ Coincide"
-    counts as a correct confirmation, so no separate correctness judgement is stored."""
-    service = PricingService(
-        db, StoreProductRepository(db), PriceHistoryRepository(db), PriceConfirmationRepository(db), redis
-    )
+    counts as a correct confirmation, so no separate correctness judgement is stored. Superseded
+    by the broader levelled system at `GET /reputation/users/{user_id}` -- kept for backward
+    compatibility with existing clients."""
     correct_confirmations = await service.get_reputation(user_id)
     return UserReputationRead(user_id=user_id, correct_confirmations=correct_confirmations)
 

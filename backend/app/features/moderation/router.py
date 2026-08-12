@@ -21,6 +21,8 @@ from app.features.moderation.schemas import (
     ProposeProductMergeRequest,
 )
 from app.features.moderation.service import ModerationService
+from app.features.reputation.repository import ReputationEventRepository
+from app.features.reputation.service import ReputationService
 from app.features.pricing.repository import (
     PriceConfirmationRepository,
     PriceHistoryRepository,
@@ -42,6 +44,7 @@ def get_moderation_service(db: AsyncSession = Depends(get_db)) -> ModerationServ
         StoreProductRepository(db),
         PriceHistoryRepository(db),
         PriceConfirmationRepository(db),
+        ReputationService(ReputationEventRepository(db)),
     )
 
 
