@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/prezio_background" />
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:endColor="@color/prezio_launch_bottom"
+                android:startColor="@color/prezio_launch_top" />
+        </shape>
+    </item>
     <item>
         <bitmap
             android:gravity="center"
