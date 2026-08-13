@@ -81,7 +81,11 @@ export function AppProviders({ children }: PropsWithChildren) {
       <SafeAreaProvider>
         <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <QueryClientProvider client={queryClient}>
-            <StatusBar barStyle="dark-content" />
+            <StatusBar
+              barStyle="dark-content"
+              backgroundColor={colorTokens.background}
+              translucent={false}
+            />
             {children}
             <SyncStatusBanner />
             <Toast config={toastConfig} />
