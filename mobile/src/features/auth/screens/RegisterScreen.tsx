@@ -5,12 +5,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Input, Separator, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
+import { GoogleBrandIcon } from '../../../shared/components/GoogleBrandIcon';
 import { useGoogleLoginMutation, useRegisterMutation } from '../hooks/useAuthMutations';
 import { signInWithGoogle } from '../services/googleSignIn';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
-  SUBTLE_ICON_STROKE_WIDTH,
-  IconBrandGoogleFilled,
   IconLock,
   IconMail,
 } from '../../../app/theme/icons';
@@ -47,18 +46,21 @@ const styles = StyleSheet.create({
     opacity: 0.05,
   },
   heroBadge: {
-    width: 128,
-    height: 128,
-    borderRadius: 28,
-    padding: 0,
+    width: 116,
+    height: 116,
+    borderRadius: 30,
+    backgroundColor: colorTokens.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: '#0F172A',
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
     shadowOffset: {
       width: 0,
-      height: 12,
+      height: 10,
     },
-    elevation: 10,
+    elevation: 6,
   },
   logo: {
     width: '100%',
@@ -149,7 +151,7 @@ export function RegisterScreen({ navigation }: Props) {
         <YStack pointerEvents="none" style={styles.glowBottomLeft} />
 
         <YStack alignItems="center" gap="$4">
-          <YStack backgroundColor="$surface" style={styles.heroBadge}>
+          <YStack style={styles.heroBadge}>
             <Image
               source={logoSource}
               style={styles.logo}
@@ -253,11 +255,7 @@ export function RegisterScreen({ navigation }: Props) {
               borderRadius="$4"
               height={54}
               icon={
-                <IconBrandGoogleFilled
-                  color={colorTokens.textPrimary}
-                  size={20}
-                  strokeWidth={SUBTLE_ICON_STROKE_WIDTH}
-                />
+                <GoogleBrandIcon width={20} height={20} />
               }
             >
               <Text fontFamily="$body" fontSize="$sm" color="$color">
