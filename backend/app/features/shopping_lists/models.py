@@ -1,6 +1,7 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.features.shopping_lists.enums import (
@@ -42,6 +43,11 @@ class ShoppingListItem(Base):
     # connection) sends the same client_request_id and gets back the original item instead of
     # creating a duplicate. Nullable/unindexed-unique on purpose -- most clients won't set it.
     client_request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Snapshot taken the moment `checked` transitions False -> True; treated as this item's
+    # "purchase" signal for dashboard analytics (see backend/app/features/dashboard). Both are
+    # cleared back to null if the item is unchecked, since there's no separate purchase record.
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    price_at_check: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     shopping_list: Mapped["ShoppingList"] = relationship(back_populates="items")
 

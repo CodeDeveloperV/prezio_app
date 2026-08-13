@@ -1,3 +1,6 @@
+from datetime import datetime
+from decimal import Decimal
+
 from sqlalchemy import delete, select, update
 
 from app.features.shopping_lists.enums import ShoppingListInvitationStatus, ShoppingListStatus
@@ -55,14 +58,25 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
         *,
         quantity: int | None = None,
         checked: bool | None = None,
+        update_checked_snapshot: bool = False,
+        checked_at: datetime | None = None,
+        price_at_check: Decimal | None = None,
     ) -> ShoppingListItem | None:
         """Atomic `UPDATE ... WHERE id = ? AND version = ?`, same optimistic-concurrency pattern
-        as StoreProductRepository.update_price_if_version_matches (pricing) -- no new mechanism."""
+        as StoreProductRepository.update_price_if_version_matches (pricing) -- no new mechanism.
+
+        `update_checked_snapshot` is a separate flag (rather than inferring from
+        checked_at/price_at_check being non-None) because clearing the snapshot back to null --
+        when an item is unchecked -- is itself a valid write, distinct from "don't touch these
+        columns"."""
         values: dict[str, object] = {"version": ShoppingListItem.version + 1}
         if quantity is not None:
             values["quantity"] = quantity
         if checked is not None:
             values["checked"] = checked
+        if update_checked_snapshot:
+            values["checked_at"] = checked_at
+            values["price_at_check"] = price_at_check
 
         result = await self.session.execute(
             update(ShoppingListItem)

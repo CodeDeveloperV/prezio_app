@@ -10,6 +10,7 @@ from app.features.alerts.router import router as alerts_router
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.comparison.router import router as comparison_router
+from app.features.dashboard.router import router as dashboard_router
 from app.features.moderation.router import router as moderation_router
 from app.features.notifications.router import router as notifications_router
 from app.features.pricing.router import router as pricing_router
@@ -53,6 +54,7 @@ app.include_router(shopping_lists_router)
 app.include_router(shopping_list_invitations_router)
 app.include_router(notifications_router)
 app.include_router(alerts_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/health")

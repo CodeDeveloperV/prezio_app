@@ -317,6 +317,11 @@ export interface ShoppingListItem {
   checked: boolean;
   added_by: number;
   version: number;
+  // Snapshotted server-side the moment `checked` transitions to true (this item's "purchase"
+  // signal for the dashboard, see DashboardSummary) -- both null again if unchecked.
+  checked_at: ISODateTime | null;
+  // Decimal on the wire is a string, same convention as PriceAlertRead.target_price.
+  price_at_check: string | null;
 }
 
 export interface ShoppingListItemCreate {
@@ -532,4 +537,53 @@ export interface NotificationRead {
 
 export interface MarkAllReadResponse {
   marked_read: number;
+}
+
+// --- User budget (PATCH /users/me/budget) -----------------------------------------------------
+
+// null clears the budget (it's optional -- unset means the dashboard doesn't show a
+// remaining-budget figure).
+export interface UserBudgetUpdate {
+  monthly_budget: string | null;
+}
+
+export interface UserBudgetRead {
+  monthly_budget: string | null;
+}
+
+// --- Dashboard (GET /dashboard/summary) -------------------------------------------------------
+
+// "Purchase" here means a shopping_list_item that's been checked -- Prezio has no separate
+// purchase/order domain, so checking an item off a shared list is the closest real signal.
+export interface MonthlySummary {
+  year: number;
+  month: number;
+  total_spent: string;
+  total_savings: string;
+}
+
+export interface MostPurchasedProduct {
+  product_id: number;
+  product_name: string;
+  total_quantity: number;
+}
+
+export interface LastPurchase {
+  item_id: number;
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  price_at_check: string;
+  checked_at: ISODateTime;
+}
+
+export interface DashboardSummary {
+  current_month: MonthlySummary;
+  previous_month: MonthlySummary;
+  // Oldest first, current month last -- ready to plot on a chart as-is.
+  monthly_history: MonthlySummary[];
+  most_purchased_products: MostPurchasedProduct[];
+  last_purchase: LastPurchase | null;
+  monthly_budget: string | null;
+  remaining_budget: string | null;
 }

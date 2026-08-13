@@ -42,6 +42,7 @@ from app.features.shopping_lists.schemas import (
     ShoppingListRead,
 )
 from app.features.shopping_lists.service import ShoppingListService
+from app.features.pricing.repository import StoreProductRepository
 from app.features.users.models import User
 from app.features.users.repository import UserRepository
 
@@ -62,6 +63,7 @@ def get_shopping_list_service(
         redis,
         NotificationService(db, NotificationRepository(db)),
         ShoppingListPermissionService(),
+        StoreProductRepository(db),
     )
 
 

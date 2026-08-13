@@ -56,10 +56,42 @@ Multiple users can share and edit the same list (`backend/app/features/shopping_
 
 **Known technical debt**:
 - Mobile "add item" takes a raw numeric product ID (no product search/picker UI exists anywhere in the app yet — products are otherwise only discovered via barcode scanning in the purchase flow).
-- Dashboard's "Listas recientes" section still renders mock data and hasn't been rewired to the real shopping-lists API/screens.
 - Pre-existing, unrelated to this epic: `mobile/src/shared/services/ws/wsClient.ts` (pricing) sends `{type, storeProductId}` but the backend pricing WS handler expects `{action, store_product_id}` — a wire-format mismatch that predates this work and was deliberately not copied into the new `shoppingListWsClient.ts`, which uses the backend's actual `{action, shopping_list_id}` protocol.
 - Pre-existing, unrelated to this epic: `WS_BASE_URL` in mobile config points at `/ws`, but the backend serves pricing at `/pricing/ws` — the new shopping-list client derives its own URL (`/shopping-lists/ws`) independently of this existing mismatch rather than fixing it.
 - Offline sync (WatermelonDB `pending_actions` replay) remains out of scope; nothing in this epic's schema or event design blocks adding it later.
+
+## Dashboard inteligente
+
+The Dashboard (`mobile/src/features/dashboard/`) is fully backend-driven — no mock data. It's built
+on a new cross-feature `dashboard` backend slice (`backend/app/features/dashboard/`) that has no
+model of its own; it only reads from `shopping_lists`, `catalog`, and `pricing`.
+
+**Purchase signal**: Prezio has no separate purchase/order domain, so a checked-off shopping list
+item (`checked` False→True) is treated as "the purchase." That transition now snapshots
+`checked_at` and `price_at_check` (the cheapest current price across all stores listing the
+product) directly in the same optimistic-concurrency update that flips `checked`. Unchecking an
+item clears both back to null.
+
+**Savings**: `total_savings` for a month is `sum(max(reference_price - price_at_check, 0) * quantity)`,
+where `reference_price` is the highest `PriceHistory` price recorded for that product (across any
+store) in the 90 days trailing the item's `checked_at`. No history in that window → 0 savings for
+that item, never a negative number.
+
+**Month bucketing**: done in Python, not SQL. SQLite (used in tests) silently drops tzinfo from
+`DateTime(timezone=True)` columns on round-trip while Postgres (production) doesn't, so the
+repository returns raw rows and the service does the year/month grouping — mirroring the existing
+tz-normalization pattern in `PriceAlertEvaluator`.
+
+**Presupuesto restante (judgment call, not explicitly specified)**: the product brief didn't define
+what a "budget" is, so this adds `monthly_budget` to the previously-unwired `UserProfile`/`UserService`
+(confirmed dead code before this — zero call sites). It's a single flat monthly number, editable
+inline from the dashboard's budget card (`PATCH /users/me/budget`); `remaining_budget` is
+`monthly_budget - current_month.total_spent`, or `null` if no budget is set.
+
+**Known technical debt**:
+- Budget is a single global monthly number — no per-category budgets, no rollover, no history of past budget values.
+- `remaining_budget` only accounts for spend snapshotted via checked list items; it doesn't reserve budget for items still unchecked on an active list.
+- The trend chart (`SpendTrendChart`) always shows a fixed trailing 6-month window; it's not user-configurable.
 
 ## Running the backend
 

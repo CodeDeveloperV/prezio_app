@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.websocket_manager import SHOPPING_LIST_UPDATES_CHANNEL_PREFIX, USER_INVITATIONS_CHANNEL_PREFIX
 from app.features.notifications.enums import NotificationType
 from app.features.notifications.service import NotificationService
+from app.features.pricing.repository import StoreProductRepository
 from app.features.shopping_lists.enums import (
     ShoppingListInvitationStatus,
     ShoppingListMemberRole,
@@ -54,6 +56,7 @@ class ShoppingListService:
         redis: Redis,
         notifications: NotificationService,
         policy: ShoppingListPermissionService,
+        store_products: StoreProductRepository,
     ) -> None:
         self.db = db
         self.lists = lists
@@ -64,6 +67,7 @@ class ShoppingListService:
         self.redis = redis
         self.notifications = notifications
         self.policy = policy
+        self.store_products = store_products
 
     # ---- lists ----
 
@@ -199,8 +203,24 @@ class ShoppingListService:
         if existing is None or existing.shopping_list_id != shopping_list_id:
             raise ShoppingListItemNotFound(item_id)
 
+        # A checked-state transition is this item's "purchase" signal (Prezio has no separate
+        # purchase/order domain -- see backend/app/features/dashboard). Snapshot the cheapest
+        # current price across stores at the moment of check; clear the snapshot on uncheck.
+        update_checked_snapshot = checked is not None and checked != existing.checked
+        checked_at = None
+        price_at_check = None
+        if update_checked_snapshot and checked:
+            checked_at = datetime.now(timezone.utc)
+            price_at_check = await self._cheapest_current_price(existing.product_id)
+
         updated = await self.items.update_if_version_matches(
-            item_id, expected_version, quantity=quantity, checked=checked
+            item_id,
+            expected_version,
+            quantity=quantity,
+            checked=checked,
+            update_checked_snapshot=update_checked_snapshot,
+            checked_at=checked_at,
+            price_at_check=price_at_check,
         )
         if updated is None:
             current = await self.items.get_by_id(item_id)
@@ -373,6 +393,16 @@ class ShoppingListService:
             raise ShoppingListInvitationAccessDenied(invitation_id)
         return invitation
 
+    async def _cheapest_current_price(self, product_id: int) -> Decimal | None:
+        """Prezio's core value proposition is comparing prices across stores, and a shopping-list
+        item has no store/branch of its own -- so the "purchase price" snapshotted on check is
+        the cheapest currently-listed price for the product across all stores, not a specific
+        store's price. None if no store currently lists this product."""
+        store_products = await self.store_products.list_by_product(product_id)
+        if not store_products:
+            return None
+        return min(sp.current_price for sp in store_products)
+
     @staticmethod
     def _item_payload(item: ShoppingListItem) -> dict:
         return {
@@ -382,6 +412,8 @@ class ShoppingListService:
             "checked": item.checked,
             "added_by": item.added_by,
             "version": item.version,
+            "checked_at": item.checked_at.isoformat() if item.checked_at else None,
+            "price_at_check": str(item.price_at_check) if item.price_at_check is not None else None,
         }
 
     async def _publish_list_event(

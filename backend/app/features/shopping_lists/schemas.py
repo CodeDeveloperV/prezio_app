@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr
 
@@ -42,6 +43,8 @@ class ShoppingListItemRead(ORMModel):
     checked: bool
     added_by: int
     version: int
+    checked_at: datetime | None
+    price_at_check: Decimal | None
 
 
 class ShoppingListMemberRead(ORMModel):
