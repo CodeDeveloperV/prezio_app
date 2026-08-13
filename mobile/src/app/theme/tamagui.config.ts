@@ -80,6 +80,9 @@ const lightTheme = {
   primary: tokens.color.primary,
   primaryPress: tokens.color.primaryPress,
   borderColor: tokens.color.border,
+  borderColorHover: tokens.color.border,
+  borderColorPress: tokens.color.border,
+  borderColorFocus: tokens.color.border,
   danger: tokens.color.danger,
   warning: tokens.color.warning,
 };
@@ -95,6 +98,9 @@ const darkTheme = {
   primary: tokens.color.primary,
   primaryPress: tokens.color.primaryPress,
   borderColor: '#1E293B',
+  borderColorHover: '#1E293B',
+  borderColorPress: '#1E293B',
+  borderColorFocus: '#1E293B',
   danger: tokens.color.danger,
   warning: tokens.color.warning,
 };

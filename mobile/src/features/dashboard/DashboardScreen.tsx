@@ -1,9 +1,14 @@
-import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Text, XStack, YStack } from 'tamagui';
 
-import { ScreenContainer } from '../../shared/components/ScreenContainer';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { ShoppingList, ShoppingListItem } from '@prezio/shared-types';
+
+import { MainTabParamList } from '../../app/navigation/types';
 import { colorTokens } from '../../app/theme/tokens';
+import { ScreenContainer } from '../../shared/components/ScreenContainer';
 import { useAuthStore } from '../../shared/store/authStore';
 import { BudgetCard } from './components/BudgetCard';
 import { HeroCard } from './components/HeroCard';
@@ -11,12 +16,46 @@ import { LastPurchaseCard } from './components/LastPurchaseCard';
 import { MonthStatsCard } from './components/MonthStatsCard';
 import { MostPurchasedList } from './components/MostPurchasedList';
 import { SpendTrendChart } from './components/SpendTrendChart';
+import { listShoppingListItems, listShoppingLists } from '../shopping-lists/api/shoppingListsApi';
 import { useDashboardQuery } from './hooks/useDashboardQuery';
 
 export function DashboardScreen() {
   const user = useAuthStore((state) => state.user);
-  const [hasActiveSession] = useState(false);
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
   const dashboardQuery = useDashboardQuery();
+  const shoppingListsQuery = useQuery<ShoppingList[], Error>({
+    queryKey: ['shoppingLists'],
+    queryFn: listShoppingLists,
+  });
+
+  const activeShoppingList =
+    shoppingListsQuery.data
+      ?.slice()
+      .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
+      .find((list) => list.status === 'active') ?? null;
+
+  const activeShoppingListItemsQuery = useQuery<ShoppingListItem[], Error>({
+    queryKey: ['shoppingLists', activeShoppingList?.id, 'items'],
+    queryFn: () => listShoppingListItems(activeShoppingList!.id),
+    enabled: activeShoppingList !== null,
+  });
+
+  const activeShoppingListQuantity = activeShoppingListItemsQuery.data?.reduce(
+    (total, item) => total + (item.checked ? 0 : item.quantity),
+    0,
+  );
+  let activeSessionMetric: string | null = null;
+  if (activeShoppingList !== null) {
+    if (activeShoppingListItemsQuery.isPending) {
+      activeSessionMetric = 'Cargando productos...';
+    } else if (activeShoppingListQuantity === 0) {
+      activeSessionMetric = 'Sin productos pendientes';
+    } else {
+      activeSessionMetric = `${activeShoppingListQuantity} ${
+        activeShoppingListQuantity === 1 ? 'producto pendiente' : 'productos pendientes'
+      }`;
+    }
+  }
 
   const greetingName = user?.email?.split('@')[0] ?? 'de nuevo';
 
@@ -37,13 +76,15 @@ export function DashboardScreen() {
       </YStack>
 
       <HeroCard
-        hasActiveSession={hasActiveSession}
+        hasActiveSession={activeShoppingList !== null}
+        activeSessionName={activeShoppingList?.name ?? null}
+        activeSessionMetric={activeShoppingList !== null ? activeSessionMetric : null}
         onPressPrimaryAction={() => {
-          // Placeholder — wired to the shopping-session flow in a future slice.
+          navigation.navigate('NewPurchase');
         }}
       />
 
-      {dashboardQuery.isPending && (
+      {(dashboardQuery.isPending || shoppingListsQuery.isPending) && (
         <YStack alignItems="center" padding="$5">
           <ActivityIndicator color={colorTokens.primary} />
         </YStack>
