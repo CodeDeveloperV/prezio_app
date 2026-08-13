@@ -6,6 +6,7 @@ import { Button, Input, Separator, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { GoogleBrandIcon } from '../../../shared/components/GoogleBrandIcon';
+import { showAuthErrorToast } from '../services/authToast';
 import { useGoogleLoginMutation, useLoginMutation } from '../hooks/useAuthMutations';
 import { signInWithGoogle } from '../services/googleSignIn';
 import {
@@ -129,21 +130,37 @@ export function LoginScreen({ navigation }: Props) {
   const googleLoginMutation = useGoogleLoginMutation();
 
   const handleLogin = () => {
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate(
+      { email, password },
+      {
+        onError: () =>
+          showAuthErrorToast({
+            title: 'No pudimos iniciar sesión',
+            message: 'Revisá tus datos e intentá de nuevo.',
+          }),
+      },
+    );
   };
 
   const handleGoogleLogin = async () => {
     try {
       const idToken = await signInWithGoogle();
-      googleLoginMutation.mutate(idToken);
-    } catch (error) {
-      // Surfacing a toast/snackbar is future work — logged for now.
-      console.warn('[Auth] Google sign-in failed', error);
+      googleLoginMutation.mutate(idToken, {
+        onError: () =>
+          showAuthErrorToast({
+            title: 'No pudimos continuar con Google',
+            message: 'Intentá de nuevo en unos segundos.',
+          }),
+      });
+    } catch {
+      showAuthErrorToast({
+        title: 'No pudimos continuar con Google',
+        message: 'Revisá tu conexión e intentá de nuevo.',
+      });
     }
   };
 
   const isSubmitting = loginMutation.isPending || googleLoginMutation.isPending;
-  const errorMessage = loginMutation.error?.message ?? googleLoginMutation.error?.message;
 
   return (
     <ScreenContainer>
@@ -162,7 +179,13 @@ export function LoginScreen({ navigation }: Props) {
           </YStack>
 
           <YStack alignItems="center" gap="$2">
-            <Text fontFamily="$heading" fontSize="$display" color="$color" textAlign="center">
+            <Text
+              fontFamily="$heading"
+              fontSize="$xxl"
+              fontWeight="700"
+              color="$color"
+              textAlign="center"
+            >
               Prezio
             </Text>
             <Text
@@ -170,19 +193,9 @@ export function LoginScreen({ navigation }: Props) {
               fontSize="$sm"
               color="$colorSecondary"
               textAlign="center"
-              maxWidth={260}
+              maxWidth={280}
             >
-              Tu aliado en cada compra
-            </Text>
-            <Text
-              fontFamily="$body"
-              fontSize="$sm"
-              color="$colorSecondary"
-              textAlign="center"
-              maxWidth={300}
-            >
-              Iniciá sesión para seguir tus listas, comparar precios y volver más rápido a lo que
-              necesitás.
+              Iniciá sesión para seguir tus listas y comparar precios más rápido.
             </Text>
           </YStack>
         </YStack>
@@ -226,11 +239,6 @@ export function LoginScreen({ navigation }: Props) {
               onChangeText={setPassword}
             />
 
-            {errorMessage ? (
-              <Text fontFamily="$body" fontSize="$xs" color="$danger">
-                {errorMessage}
-              </Text>
-            ) : null}
           </YStack>
 
           <YStack gap="$3">
@@ -242,6 +250,8 @@ export function LoginScreen({ navigation }: Props) {
               pressStyle={primaryPressStyle}
               borderRadius="$4"
               height={56}
+              width="92%"
+              alignSelf="center"
             >
               <Text fontFamily="$heading" fontSize="$md" color="$white">
                 Iniciar sesión
@@ -251,7 +261,7 @@ export function LoginScreen({ navigation }: Props) {
             <XStack alignItems="center" gap="$3">
               <Separator flex={1} borderColor="$borderColor" />
               <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                o
+                o continúa con
               </Text>
               <Separator flex={1} borderColor="$borderColor" />
             </XStack>

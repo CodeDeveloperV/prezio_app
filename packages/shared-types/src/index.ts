@@ -307,6 +307,7 @@ export interface ShoppingList {
 
 export interface ShoppingListCreate {
   name: string;
+  client_request_id?: string;
 }
 
 export interface ShoppingListItem {

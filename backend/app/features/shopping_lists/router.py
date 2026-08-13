@@ -82,7 +82,7 @@ async def create_shopping_list(
     current_user: User = Depends(get_current_user),
     service: ShoppingListService = Depends(get_shopping_list_service),
 ) -> ShoppingListRead:
-    shopping_list = await service.create(current_user.id, payload.name)
+    shopping_list = await service.create(current_user.id, payload.name, payload.client_request_id)
     return ShoppingListRead.model_validate(shopping_list)
 
 

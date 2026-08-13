@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { HTTPError } from 'ky';
 import { Button, Checkbox, Input, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
   IconCheck,
+  IconClock,
   IconCrown,
+  IconMinus,
   IconPlus,
   IconTrash,
   IconUserPlus,
@@ -20,20 +21,19 @@ import { colorTokens } from '../../../app/theme/tokens';
 import type { ProfileStackParamList } from '../../../app/navigation/types';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { useShoppingListRealtime } from '../hooks/useShoppingListRealtime';
+import { useArchiveShoppingListMutation, useRemoveShoppingListMemberMutation } from '../hooks/useShoppingListMutations';
+import { useShoppingListMembersQuery, useShoppingListQuery } from '../hooks/useShoppingListQueries';
+import { useOfflineShoppingList, useOfflineShoppingListItems } from '../hooks/useOfflineShoppingLists';
 import {
-  useAddShoppingListItemMutation,
-  useArchiveShoppingListMutation,
-  useDeleteShoppingListItemMutation,
-  useRemoveShoppingListMemberMutation,
-  useUpdateShoppingListItemMutation,
-} from '../hooks/useShoppingListMutations';
-import {
-  useShoppingListItemsQuery,
-  useShoppingListMembersQuery,
-  useShoppingListQuery,
-} from '../hooks/useShoppingListQueries';
+  addShoppingListItemOffline,
+  changeItemQuantityOffline,
+  deleteShoppingListItemOffline,
+  setItemCheckedOffline,
+} from '../services/offline/offlineShoppingListActions';
+import { runSync } from '../services/offline/shoppingListSyncEngine';
 
-import type { ShoppingListItem, ShoppingListItemConflictResponse, ShoppingListMember } from '@prezio/shared-types';
+import type ShoppingListItem from '../../../shared/services/db/models/ShoppingListItem';
+import type { ShoppingListMember } from '@prezio/shared-types';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'ShoppingListDetail'>;
 
@@ -76,39 +76,52 @@ function ItemRow({
   item,
   canEdit,
   onToggleChecked,
+  onIncrement,
+  onDecrement,
   onDelete,
 }: {
   item: ShoppingListItem;
   canEdit: boolean;
   onToggleChecked: () => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
   onDelete: () => void;
 }) {
   return (
-    <XStack
-      alignItems="center"
-      gap="$3"
-      backgroundColor="$surface"
-      borderRadius="$3"
-      padding="$3"
-    >
+    <XStack alignItems="center" gap="$3" backgroundColor="$surface" borderRadius="$3" padding="$3">
       <Checkbox checked={item.checked} disabled={!canEdit} onCheckedChange={onToggleChecked}>
         <Checkbox.Indicator>
           <IconCheck color={colorTokens.primary} size={14} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
         </Checkbox.Indicator>
       </Checkbox>
       <YStack flex={1}>
-        <Text
-          fontFamily="$body"
-          fontSize="$sm"
-          color={item.checked ? '$colorSecondary' : '$color'}
-          textDecorationLine={item.checked ? 'line-through' : 'none'}
-        >
-          Producto #{item.product_id}
-        </Text>
-        <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-          Cantidad: {item.quantity}
-        </Text>
+        <XStack alignItems="center" gap="$1">
+          <Text
+            fontFamily="$body"
+            fontSize="$sm"
+            color={item.checked ? '$colorSecondary' : '$color'}
+            textDecorationLine={item.checked ? 'line-through' : 'none'}
+          >
+            Producto #{item.productId}
+          </Text>
+          {!item.synced && (
+            <IconClock color={colorTokens.textSecondary} size={12} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          )}
+        </XStack>
       </YStack>
+      {canEdit && (
+        <XStack alignItems="center" gap="$1">
+          <Button size="$2" circular chromeless disabled={item.quantity <= 1} onPress={onDecrement}>
+            <IconMinus color={colorTokens.textPrimary} size={14} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          </Button>
+          <Text fontFamily="$body" fontSize="$sm" color="$color" minWidth={20} textAlign="center">
+            {item.quantity}
+          </Text>
+          <Button size="$2" circular chromeless onPress={onIncrement}>
+            <IconPlus color={colorTokens.textPrimary} size={14} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          </Button>
+        </XStack>
+      )}
       {canEdit && (
         <Button size="$2" circular chromeless onPress={onDelete}>
           <IconTrash color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
@@ -118,71 +131,72 @@ function ItemRow({
   );
 }
 
-/** Shows a list's items and members with live updates over WS, gated by the caller's role
- * (owner/editor). Item checks/edits use the same version-based optimistic-concurrency
- * pattern as pricing: a stale version comes back as HTTP 409 with the current item state. */
+/**
+ * Shows a list's items with live updates over WS, gated by the caller's role (owner/editor).
+ * Items read from WatermelonDB (Epic 14 offline mode) -- every edit here (add/check/quantity/
+ * delete) is optimistic-local + queued for sync, never a direct network call. Membership,
+ * invites, and archiving remain online-only and stay on React Query, keyed off the list's
+ * server id once it has synced.
+ */
 export function ShoppingListDetailScreen({ route, navigation }: Props) {
   const { shoppingListId, shoppingListName } = route.params;
   const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [productIdInput, setProductIdInput] = useState('');
-  const [quantityInput, setQuantityInput] = useState('1');
-  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
 
-  const { connectionStatus } = useShoppingListRealtime(shoppingListId);
-  const listQuery = useShoppingListQuery(shoppingListId);
-  const membersQuery = useShoppingListMembersQuery(shoppingListId);
-  const itemsQuery = useShoppingListItemsQuery(shoppingListId);
+  const list = useOfflineShoppingList(shoppingListId);
+  const { items, isLoading: itemsLoading, refresh: refreshItems } = useOfflineShoppingListItems(shoppingListId);
 
-  const addItemMutation = useAddShoppingListItemMutation(shoppingListId);
-  const updateItemMutation = useUpdateShoppingListItemMutation(shoppingListId);
-  const deleteItemMutation = useDeleteShoppingListItemMutation(shoppingListId);
-  const removeMemberMutation = useRemoveShoppingListMemberMutation(shoppingListId);
+  const serverId = list?.serverId ? Number(list.serverId) : undefined;
+  const { connectionStatus } = useShoppingListRealtime(shoppingListId, serverId);
+  // An unsynced list can't have been archived by anyone else yet -- see useShoppingListQuery,
+  // this is intentionally scoped to the online-only "archived" concept, not a general fallback.
+  const listQuery = useShoppingListQuery(serverId);
+  const membersQuery = useShoppingListMembersQuery(serverId);
+
+  const removeMemberMutation = useRemoveShoppingListMemberMutation(serverId ?? -1);
   const archiveListMutation = useArchiveShoppingListMutation();
 
   const members = membersQuery.data ?? [];
-  const items = itemsQuery.data ?? [];
-  const shoppingList = listQuery.data;
-  const isArchived = shoppingList?.status === 'archived';
+  const isArchived = listQuery.data?.status === 'archived';
 
   const currentMember = members.find((member) => member.user_id === currentUserId);
   const isOwner = currentMember?.role === 'owner';
-  // Owner or editor can edit items; VIEWER isn't modeled yet so any member can edit.
-  const canEditItems = currentMember !== undefined && !isArchived;
+  // Owner or editor can edit items; VIEWER isn't modeled yet so any member can edit. While the
+  // list hasn't synced there are no members yet either, but its creator can always edit it.
+  const canEditItems = (serverId === undefined || currentMember !== undefined) && !isArchived;
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     const productId = Number(productIdInput);
-    const quantity = Number(quantityInput) || 1;
     if (!productId || Number.isNaN(productId)) {
       return;
     }
-    addItemMutation.mutate(
-      { product_id: productId, quantity },
-      { onSuccess: () => setProductIdInput('') },
-    );
+    setProductIdInput('');
+    await addShoppingListItemOffline({
+      shoppingListLocalId: shoppingListId,
+      productId: String(productId),
+      productName: `Producto #${productId}`,
+      quantity: 1,
+    });
+    runSync().catch(() => undefined);
   };
 
   const handleToggleChecked = async (item: ShoppingListItem) => {
-    setConflictMessage(null);
-    try {
-      await updateItemMutation.mutateAsync({
-        itemId: item.id,
-        request: { version: item.version, checked: !item.checked },
-      });
-    } catch (error) {
-      if (error instanceof HTTPError && error.response.status === 409) {
-        const conflict: ShoppingListItemConflictResponse = await error.response.json();
-        setConflictMessage(
-          `"${conflict.item.product_id}" fue modificado por alguien más. La lista se actualizó.`,
-        );
-        itemsQuery.refetch();
-        return;
-      }
-      setConflictMessage('No pudimos actualizar el producto. Intenta de nuevo.');
-    }
+    await setItemCheckedOffline(item, !item.checked);
+    runSync().catch(() => undefined);
   };
 
-  if (listQuery.isLoading || membersQuery.isLoading || itemsQuery.isLoading) {
+  const handleQuantityChange = async (item: ShoppingListItem, delta: number) => {
+    await changeItemQuantityOffline(item, delta);
+    runSync().catch(() => undefined);
+  };
+
+  const handleDeleteItem = async (item: ShoppingListItem) => {
+    await deleteShoppingListItemOffline(item);
+    runSync().catch(() => undefined);
+  };
+
+  if (!list || itemsLoading) {
     return (
       <ScreenContainer scroll={false}>
         <YStack flex={1} alignItems="center" justifyContent="center">
@@ -224,23 +238,22 @@ export function ShoppingListDetailScreen({ route, navigation }: Props) {
               onRemove={() => removeMemberMutation.mutate(member.user_id)}
             />
           ))}
-          {!isArchived && (
-            <Button
-              size="$2"
-              circular
-              chromeless
-              onPress={() => navigation.navigate('InviteMember', { shoppingListId })}
-            >
-              <IconUserPlus color={colorTokens.primary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            </Button>
-          )}
+          {!isArchived &&
+            (serverId !== undefined ? (
+              <Button
+                size="$2"
+                circular
+                chromeless
+                onPress={() => navigation.navigate('InviteMember', { shoppingListId: serverId })}
+              >
+                <IconUserPlus color={colorTokens.primary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              </Button>
+            ) : (
+              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                Invitar requiere conexión
+              </Text>
+            ))}
         </XStack>
-
-        {conflictMessage && (
-          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-            {conflictMessage}
-          </Text>
-        )}
 
         {!isArchived && (
           <XStack gap="$2" alignItems="center">
@@ -251,7 +264,6 @@ export function ShoppingListDetailScreen({ route, navigation }: Props) {
               onChangeText={setProductIdInput}
               placeholder="ID de producto"
             />
-            <Input width={60} keyboardType="number-pad" value={quantityInput} onChangeText={setQuantityInput} />
             <Button size="$3" circular backgroundColor="$primary" onPress={handleAddItem}>
               <IconPlus color={colorTokens.white} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
             </Button>
@@ -260,16 +272,18 @@ export function ShoppingListDetailScreen({ route, navigation }: Props) {
 
         <FlatList
           data={items}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          onRefresh={() => itemsQuery.refetch()}
-          refreshing={itemsQuery.isRefetching}
+          onRefresh={refreshItems}
+          refreshing={false}
           renderItem={({ item }) => (
             <ItemRow
               item={item}
               canEdit={canEditItems}
               onToggleChecked={() => handleToggleChecked(item)}
-              onDelete={() => deleteItemMutation.mutate(item.id)}
+              onIncrement={() => handleQuantityChange(item, 1)}
+              onDecrement={() => handleQuantityChange(item, -1)}
+              onDelete={() => handleDeleteItem(item)}
             />
           )}
           ListEmptyComponent={
@@ -279,11 +293,8 @@ export function ShoppingListDetailScreen({ route, navigation }: Props) {
           }
         />
 
-        {isOwner && !isArchived && (
-          <Button
-            backgroundColor="$surface"
-            onPress={() => archiveListMutation.mutate(shoppingListId)}
-          >
+        {isOwner && !isArchived && serverId !== undefined && (
+          <Button backgroundColor="$surface" onPress={() => archiveListMutation.mutate(serverId)}>
             <Text fontFamily="$body" fontSize="$sm" color="$danger">
               Archivar lista
             </Text>

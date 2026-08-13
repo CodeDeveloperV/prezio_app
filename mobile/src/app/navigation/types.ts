@@ -36,6 +36,10 @@ export type ShoppingSessionStackParamList = {
     barcodeId: number;
     product: ScanProductDetails;
     storeProduct: StoreProductRead | null;
+    // True when this result came from the offline cache (Epic 14) instead of a live lookup --
+    // gates the online-only actions (confirm match, price update, report, alerts) and shows the
+    // price as a snapshot rather than a guaranteed-current value.
+    fromCache?: boolean;
   };
   ScanDisambiguation: {
     storeBranchId: number;
@@ -60,7 +64,10 @@ export type ProfileStackParamList = {
   Alerts: undefined;
   Notifications: undefined;
   ShoppingLists: undefined;
-  ShoppingListDetail: { shoppingListId: number; shoppingListName: string };
+  // Local WatermelonDB id (Epic 14 offline mode) -- may not have a server_id yet if the list was
+  // created offline and hasn't synced.
+  ShoppingListDetail: { shoppingListId: string; shoppingListName: string };
+  // Invites are online-only, so this is always the backend's numeric id (see ShoppingListDetailScreen).
   InviteMember: { shoppingListId: number };
   ShoppingListInvitations: undefined;
 };

@@ -80,8 +80,15 @@ class ShoppingListService:
             raise ShoppingListAccessDenied(shopping_list_id)
         return shopping_list
 
-    async def create(self, owner_user_id: int, name: str) -> ShoppingList:
-        shopping_list = ShoppingList(owner_user_id=owner_user_id, name=name)
+    async def create(
+        self, owner_user_id: int, name: str, client_request_id: str | None = None
+    ) -> ShoppingList:
+        if client_request_id is not None:
+            existing = await self.lists.get_by_client_request_id(owner_user_id, client_request_id)
+            if existing is not None:
+                return existing
+
+        shopping_list = ShoppingList(owner_user_id=owner_user_id, name=name, client_request_id=client_request_id)
         await self.lists.add(shopping_list)
         await self.members.add(
             ShoppingListMember(

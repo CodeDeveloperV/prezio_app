@@ -17,4 +17,5 @@ module.exports = {
   preset: '@react-native/jest-preset',
   transformIgnorePatterns: [`node_modules/(?!(${TRANSFORM_ALLOWLIST})/)`],
   setupFiles: ['react-native-gesture-handler/jestSetup'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };

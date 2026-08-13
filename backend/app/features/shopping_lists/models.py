@@ -21,6 +21,9 @@ class ShoppingList(Base):
     status: Mapped[ShoppingListStatus] = mapped_column(
         Enum(ShoppingListStatus, native_enum=False), default=ShoppingListStatus.ACTIVE
     )
+    # Lets create-list be idempotent for offline clients replaying a queued creation after a
+    # dropped connection -- same pattern as ShoppingListItem.client_request_id below.
+    client_request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     items: Mapped[list["ShoppingListItem"]] = relationship(back_populates="shopping_list")

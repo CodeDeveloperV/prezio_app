@@ -8,15 +8,17 @@ import {
   DEFAULT_ICON_STROKE_WIDTH,
   SUBTLE_ICON_STROKE_WIDTH,
   IconChevronRight,
+  IconClock,
   IconPlus,
   IconReceipt,
 } from '../../../app/theme/icons';
 import { colorTokens } from '../../../app/theme/tokens';
 import type { ProfileStackParamList } from '../../../app/navigation/types';
-import { useCreateShoppingListMutation } from '../hooks/useShoppingListMutations';
-import { useShoppingListsQuery } from '../hooks/useShoppingLists';
+import { useOfflineShoppingLists } from '../hooks/useOfflineShoppingLists';
+import { createShoppingListOffline } from '../services/offline/offlineShoppingListActions';
+import { runSync } from '../services/offline/shoppingListSyncEngine';
 
-import type { ShoppingList } from '@prezio/shared-types';
+import type ShoppingList from '../../../shared/services/db/models/ShoppingList';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'ShoppingLists'>;
 
@@ -53,27 +55,32 @@ function ShoppingListRow({ list, onPress }: { list: ShoppingList; onPress: () =>
       <Text flex={1} fontFamily="$heading" fontSize="$sm" color="$color">
         {list.name}
       </Text>
+      {!list.synced && (
+        <IconClock color={colorTokens.textSecondary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+      )}
       <IconChevronRight color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
     </XStack>
   );
 }
 
-/** "Mis listas": every ACTIVE shopping list the user is a member of (owner or editor). */
+/** "Mis listas": reads straight from WatermelonDB (Epic 14 offline mode) so it never waits on a
+ * network response -- a pending-sync clock icon marks a list that hasn't reached the backend
+ * yet. The consolidated sync-status banner (SyncStatusBanner) covers the aggregate queue. */
 export function ShoppingListsScreen({ navigation }: Props) {
   const [newListName, setNewListName] = useState('');
-  const listsQuery = useShoppingListsQuery();
-  const createListMutation = useCreateShoppingListMutation();
-  const lists = listsQuery.data ?? [];
+  const { lists, isLoading, refresh } = useOfflineShoppingLists();
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const name = newListName.trim();
     if (!name) {
       return;
     }
-    createListMutation.mutate({ name }, { onSuccess: () => setNewListName('') });
+    setNewListName('');
+    await createShoppingListOffline(name);
+    runSync().catch(() => undefined);
   };
 
-  if (listsQuery.isLoading) {
+  if (isLoading) {
     return (
       <ScreenContainer scroll={false}>
         <YStack flex={1} alignItems="center" justifyContent="center">
@@ -93,23 +100,17 @@ export function ShoppingListsScreen({ navigation }: Props) {
             onChangeText={setNewListName}
             placeholder="Nueva lista, ej. Supermercado"
           />
-          <Button
-            size="$3"
-            circular
-            backgroundColor="$primary"
-            disabled={createListMutation.isPending}
-            onPress={handleCreate}
-          >
+          <Button size="$3" circular backgroundColor="$primary" onPress={handleCreate}>
             <IconPlus color={colorTokens.white} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
           </Button>
         </XStack>
 
         <FlatList
           data={lists}
-          keyExtractor={(list) => String(list.id)}
+          keyExtractor={(list) => list.id}
           contentContainerStyle={styles.listContent}
-          onRefresh={() => listsQuery.refetch()}
-          refreshing={listsQuery.isRefetching}
+          onRefresh={refresh}
+          refreshing={false}
           renderItem={({ item }) => (
             <ShoppingListRow
               list={item}

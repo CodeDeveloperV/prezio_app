@@ -16,6 +16,15 @@ from app.shared.base_repository import BaseRepository
 class ShoppingListRepository(BaseRepository[ShoppingList]):
     model = ShoppingList
 
+    async def get_by_client_request_id(self, owner_user_id: int, client_request_id: str) -> ShoppingList | None:
+        result = await self.session.execute(
+            select(ShoppingList).where(
+                ShoppingList.owner_user_id == owner_user_id,
+                ShoppingList.client_request_id == client_request_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def list_for_member(self, user_id: int, *, include_archived: bool = False) -> list[ShoppingList]:
         query = (
             select(ShoppingList)

@@ -6,6 +6,7 @@ import { Button, Input, Separator, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { GoogleBrandIcon } from '../../../shared/components/GoogleBrandIcon';
+import { showAuthErrorToast } from '../services/authToast';
 import { useGoogleLoginMutation, useRegisterMutation } from '../hooks/useAuthMutations';
 import { signInWithGoogle } from '../services/googleSignIn';
 import {
@@ -129,20 +130,37 @@ export function RegisterScreen({ navigation }: Props) {
   const googleLoginMutation = useGoogleLoginMutation();
 
   const handleRegister = () => {
-    registerMutation.mutate({ email, password });
+    registerMutation.mutate(
+      { email, password },
+      {
+        onError: () =>
+          showAuthErrorToast({
+            title: 'No pudimos crear tu cuenta',
+            message: 'Revisá tus datos e intentá de nuevo.',
+          }),
+      },
+    );
   };
 
   const handleGoogleSignUp = async () => {
     try {
       const idToken = await signInWithGoogle();
-      googleLoginMutation.mutate(idToken);
-    } catch (error) {
-      console.warn('[Auth] Google sign-up failed', error);
+      googleLoginMutation.mutate(idToken, {
+        onError: () =>
+          showAuthErrorToast({
+            title: 'No pudimos continuar con Google',
+            message: 'Intentá de nuevo en unos segundos.',
+          }),
+      });
+    } catch {
+      showAuthErrorToast({
+        title: 'No pudimos continuar con Google',
+        message: 'Revisá tu conexión e intentá de nuevo.',
+      });
     }
   };
 
   const isSubmitting = registerMutation.isPending || googleLoginMutation.isPending;
-  const errorMessage = registerMutation.error?.message ?? googleLoginMutation.error?.message;
 
   return (
     <ScreenContainer>
@@ -215,11 +233,6 @@ export function RegisterScreen({ navigation }: Props) {
               onChangeText={setPassword}
             />
 
-            {errorMessage ? (
-              <Text fontFamily="$body" fontSize="$xs" color="$danger">
-                {errorMessage}
-              </Text>
-            ) : null}
           </YStack>
 
           <YStack gap="$3">
@@ -231,6 +244,8 @@ export function RegisterScreen({ navigation }: Props) {
               pressStyle={primaryPressStyle}
               borderRadius="$4"
               height={56}
+              width="92%"
+              alignSelf="center"
             >
               <Text fontFamily="$heading" fontSize="$md" color="$white">
                 Crear cuenta
@@ -240,7 +255,7 @@ export function RegisterScreen({ navigation }: Props) {
             <XStack alignItems="center" gap="$3">
               <Separator flex={1} borderColor="$borderColor" />
               <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                o
+                o continúa con
               </Text>
               <Separator flex={1} borderColor="$borderColor" />
             </XStack>

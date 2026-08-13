@@ -5,6 +5,7 @@ import { Button, Input, Text, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { useUpdatePriceMutation } from '../../pricing/hooks/usePricingMutations';
+import { cacheStoreProduct } from '../../../shared/services/db/catalogCache';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 
 import type { PriceConflictResponse } from '@prezio/shared-types';
@@ -22,10 +23,11 @@ export function PriceUpdateScreen({ route, navigation }: Props) {
   const handleSubmit = async () => {
     setConflictMessage(null);
     try {
-      await updatePriceMutation.mutateAsync({
+      const updated = await updatePriceMutation.mutateAsync({
         storeProductId: route.params.storeProductId,
         request: { price: Number(price), version },
       });
+      cacheStoreProduct(updated).catch(() => undefined);
       navigation.goBack();
     } catch (error) {
       if (error instanceof HTTPError && error.response.status === 409) {

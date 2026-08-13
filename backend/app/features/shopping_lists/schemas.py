@@ -13,6 +13,7 @@ from app.shared.base_schemas import ORMModel
 
 class ShoppingListCreate(BaseModel):
     name: str
+    client_request_id: str | None = None
 
 
 class ShoppingListRead(ORMModel):

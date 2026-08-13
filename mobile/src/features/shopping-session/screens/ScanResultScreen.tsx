@@ -9,6 +9,7 @@ import {
   STRONG_ICON_STROKE_WIDTH,
   IconBellRinging,
   IconCheck,
+  IconClock,
   IconEdit,
   IconFlag,
   IconHistory,
@@ -16,6 +17,7 @@ import {
 import { colorTokens } from '../../../app/theme/tokens';
 import { useReportIncorrectBarcodeMutation } from '../../catalog/hooks/useCatalogMutations';
 import { useConfirmMatchMutation } from '../../pricing/hooks/usePricingMutations';
+import { cacheStoreProduct } from '../../../shared/services/db/catalogCache';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 
 type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'ScanResult'>;
@@ -35,7 +37,7 @@ function formatDate(iso: string | null): string {
 }
 
 export function ScanResultScreen({ route, navigation }: Props) {
-  const { storeBranchId, barcodeId, product, storeProduct } = route.params;
+  const { storeBranchId, barcodeId, product, storeProduct, fromCache = false } = route.params;
   const [confirmedJustNow, setConfirmedJustNow] = useState(false);
 
   const confirmMatchMutation = useConfirmMatchMutation();
@@ -46,7 +48,10 @@ export function ScanResultScreen({ route, navigation }: Props) {
       return;
     }
     confirmMatchMutation.mutate(storeProduct.id, {
-      onSuccess: () => setConfirmedJustNow(true),
+      onSuccess: (updated) => {
+        setConfirmedJustNow(true);
+        cacheStoreProduct(updated).catch(() => undefined);
+      },
     });
   };
 
@@ -126,12 +131,20 @@ export function ScanResultScreen({ route, navigation }: Props) {
               Sin precio registrado en esta sucursal todavía.
             </Text>
           )}
+          {fromCache && (
+            <XStack alignItems="center" gap="$1" marginTop="$1">
+              <IconClock color={colorTokens.textSecondary} size={12} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                Sin conexión · precio guardado en caché, puede no ser el actual
+              </Text>
+            </XStack>
+          )}
         </YStack>
       </YStack>
 
       <YStack gap="$2">
         <Button
-          disabled={!storeProduct}
+          disabled={!storeProduct || fromCache}
           backgroundColor="$primary"
           color="$white"
           icon={<IconCheck color={colorTokens.white} size={18} strokeWidth={STRONG_ICON_STROKE_WIDTH} />}
@@ -141,7 +154,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
         </Button>
 
         <Button
-          disabled={!storeProduct}
+          disabled={!storeProduct || fromCache}
           backgroundColor="$surface"
           icon={<IconEdit color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
           onPress={handlePriceChanged}
@@ -150,6 +163,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
         </Button>
 
         <Button
+          disabled={fromCache}
           backgroundColor="$surface"
           icon={
             <IconBellRinging
@@ -166,6 +180,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
         <XStack gap="$2">
           <Button
             flex={1}
+            disabled={fromCache}
             backgroundColor="$surface"
             icon={<IconFlag color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
             onPress={handleReportIncorrect}
@@ -174,7 +189,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
           </Button>
           <Button
             flex={1}
-            disabled={!storeProduct}
+            disabled={!storeProduct || fromCache}
             backgroundColor="$surface"
             icon={<IconHistory color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
             onPress={handleViewHistory}

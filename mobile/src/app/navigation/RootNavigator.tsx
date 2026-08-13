@@ -5,6 +5,7 @@ import { YStack } from 'tamagui';
 
 import { useAuthStore } from '../../shared/store/authStore';
 import { useSessionBootstrap } from '../../features/auth/hooks/useSessionBootstrap';
+import { startSyncTriggers } from '../../features/shopping-lists/services/offline/syncTriggers';
 import { shoppingListWsClient } from '../../shared/services/ws/shoppingListWsClient';
 import { wsClient } from '../../shared/services/ws/wsClient';
 import { colorTokens } from '../theme/tokens';
@@ -27,9 +28,11 @@ export function RootNavigator() {
     if (status === 'authenticated') {
       wsClient.connect();
       shoppingListWsClient.connect();
+      const stopSyncTriggers = startSyncTriggers();
       return () => {
         wsClient.disconnect();
         shoppingListWsClient.disconnect();
+        stopSyncTriggers();
       };
     }
     return undefined;

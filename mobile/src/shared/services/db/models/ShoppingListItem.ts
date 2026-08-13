@@ -17,6 +17,9 @@ export default class ShoppingListItem extends Model {
   @field('quantity') quantity!: number;
   @field('checked') checked!: boolean;
   @field('added_by') addedBy!: string | null;
+  // Mirrors the backend's ShoppingListItem.version (optimistic concurrency) -- null/1 for an
+  // item that hasn't synced yet.
+  @field('version') version!: number;
   @field('synced') synced!: boolean;
   @date('created_at') createdAt!: Date;
   @date('updated_at') updatedAt!: Date;
