@@ -11,6 +11,10 @@ import type { TokenResponse } from '@prezio/shared-types';
 async function persistSession(tokens: TokenResponse) {
   const sessionTokens = { accessToken: tokens.access_token, refreshToken: tokens.refresh_token };
   await saveTokens(sessionTokens);
+  // Seed the access token into the store first so httpClient's beforeRequest hook attaches it
+  // to the GET /users/me call below — otherwise it goes out with no Authorization header and
+  // FastAPI's HTTPBearer rejects it with 403 (mirrors the same seeding useSessionBootstrap does).
+  useAuthStore.setState({ accessToken: sessionTokens.accessToken, refreshToken: sessionTokens.refreshToken });
   const user = await getCurrentUser();
   useAuthStore.getState().setSession({ user, tokens: sessionTokens });
 }
