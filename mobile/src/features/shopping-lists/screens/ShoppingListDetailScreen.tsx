@@ -7,6 +7,7 @@ import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
   IconCheck,
+  IconBuildingStore,
   IconClock,
   IconCrown,
   IconMinus,
@@ -254,6 +255,38 @@ export function ShoppingListDetailScreen({ route, navigation }: Props) {
               </Text>
             ))}
         </XStack>
+
+        {!isArchived && canEditItems && (
+          <Button
+            justifyContent="flex-start"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$borderColor"
+            borderRadius="$3"
+            padding="$3"
+            disabled={serverId === undefined}
+            onPress={() =>
+              serverId !== undefined &&
+              navigation.navigate('SetActiveBranch', { shoppingListId: serverId, shoppingListLocalId: shoppingListId })
+            }
+          >
+            <XStack alignItems="center" gap="$2" flex={1}>
+              <IconBuildingStore color={colorTokens.primary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <YStack flex={1}>
+                <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                  Sucursal activa
+                </Text>
+                <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                  {serverId === undefined
+                    ? 'Elegir sucursal requiere conexión'
+                    : list.activeStoreBranchId
+                      ? `Sucursal #${list.activeStoreBranchId}`
+                      : 'Elegir sucursal'}
+                </Text>
+              </YStack>
+            </XStack>
+          </Button>
+        )}
 
         {!isArchived && (
           <XStack gap="$2" alignItems="center">

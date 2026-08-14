@@ -27,11 +27,14 @@ export async function pullShoppingLists(): Promise<void> {
   await database.write(async () => {
     for (const remote of remoteLists) {
       const existing = localBySeverId.get(String(remote.id));
+      const remoteActiveBranchId =
+        remote.active_store_branch_id !== null ? String(remote.active_store_branch_id) : null;
       if (existing) {
-        if (existing.name !== remote.name) {
+        if (existing.name !== remote.name || existing.activeStoreBranchId !== remoteActiveBranchId) {
           await existing.update((list) => {
             list.name = remote.name;
             list.ownerUserId = String(remote.owner_user_id);
+            list.activeStoreBranchId = remoteActiveBranchId;
             list.synced = true;
           });
         }
@@ -42,6 +45,7 @@ export async function pullShoppingLists(): Promise<void> {
         list.serverId = String(remote.id);
         list.name = remote.name;
         list.ownerUserId = String(remote.owner_user_id);
+        list.activeStoreBranchId = remoteActiveBranchId;
         list.synced = true;
       });
     }

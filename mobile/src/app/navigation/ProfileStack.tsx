@@ -4,9 +4,11 @@ import { AlertsListScreen } from '../../features/alerts/screens/AlertsListScreen
 import { ProfileScreen } from '../../features/auth/screens/ProfileScreen';
 import { NotificationsScreen } from '../../features/notifications/screens/NotificationsScreen';
 import { InviteMemberScreen } from '../../features/shopping-lists/screens/InviteMemberScreen';
+import { SetActiveBranchScreen } from '../../features/shopping-lists/screens/SetActiveBranchScreen';
 import { ShoppingListDetailScreen } from '../../features/shopping-lists/screens/ShoppingListDetailScreen';
 import { ShoppingListInvitationsScreen } from '../../features/shopping-lists/screens/ShoppingListInvitationsScreen';
 import { ShoppingListsScreen } from '../../features/shopping-lists/screens/ShoppingListsScreen';
+import { AnalyticsScreen } from '../../features/analytics/screens/AnalyticsScreen';
 import type { ProfileStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -29,6 +31,12 @@ export function ProfileStack() {
         component={ShoppingListInvitationsScreen}
         options={{ title: 'Invitaciones' }}
       />
+      <Stack.Screen
+        name="SetActiveBranch"
+        component={SetActiveBranchScreen}
+        options={{ title: 'Sucursal activa' }}
+      />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'Estadísticas' }} />
     </Stack.Navigator>
   );
 }

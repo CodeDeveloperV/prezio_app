@@ -14,6 +14,7 @@ export default class ShoppingList extends Model {
   @field('name') name!: string;
   @field('owner_user_id') ownerUserId!: string | null;
   @field('synced') synced!: boolean;
+  @field('active_store_branch_id') activeStoreBranchId!: string | null;
   @date('created_at') createdAt!: Date;
   @date('updated_at') updatedAt!: Date;
 

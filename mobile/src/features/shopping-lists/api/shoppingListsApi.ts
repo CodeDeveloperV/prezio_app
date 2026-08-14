@@ -2,6 +2,7 @@ import { httpClient } from '../../../shared/services/api/httpClient';
 
 import type {
   ShoppingList,
+  ShoppingListActiveBranchUpdate,
   ShoppingListCreate,
   ShoppingListInvitation,
   ShoppingListInvitationCreate,
@@ -25,6 +26,15 @@ export function getShoppingList(shoppingListId: number): Promise<ShoppingList> {
 
 export function archiveShoppingList(shoppingListId: number): Promise<ShoppingList> {
   return httpClient.post(`shopping-lists/${shoppingListId}/archive`).json<ShoppingList>();
+}
+
+export function setShoppingListActiveBranch(
+  shoppingListId: number,
+  request: ShoppingListActiveBranchUpdate,
+): Promise<ShoppingList> {
+  return httpClient
+    .patch(`shopping-lists/${shoppingListId}/active-branch`, { json: request })
+    .json<ShoppingList>();
 }
 
 export function deleteShoppingList(shoppingListId: number): Promise<void> {

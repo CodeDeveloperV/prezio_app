@@ -10,6 +10,15 @@ import { schemaMigrations, createTable, addColumns, unsafeExecuteSql } from '@no
 export const migrations = schemaMigrations({
   migrations: [
     {
+      toVersion: 4,
+      steps: [
+        addColumns({
+          table: 'shopping_lists',
+          columns: [{ name: 'active_store_branch_id', type: 'string', isOptional: true }],
+        }),
+      ],
+    },
+    {
       toVersion: 3,
       steps: [
         addColumns({

@@ -14,7 +14,7 @@ import { appSchema, tableSchema } from '@nozbe/watermelondb';
  * status/action_type contract). See ./migrations.ts for how existing installs get here from v1.
  */
 export const schema = appSchema({
-  version: 3,
+  version: 4,
   tables: [
     tableSchema({
       name: 'shopping_lists',
@@ -24,6 +24,10 @@ export const schema = appSchema({
         { name: 'name', type: 'string' },
         { name: 'owner_user_id', type: 'string', isOptional: true },
         { name: 'synced', type: 'boolean' },
+        // Epic 13: mirrors ShoppingList.active_store_branch_id. Set/changed online-only via
+        // PATCH /shopping-lists/{id}/active-branch, then pulled down so the detail screen can
+        // read it without a network round-trip -- never edited offline.
+        { name: 'active_store_branch_id', type: 'string', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
       ],

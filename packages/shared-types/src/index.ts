@@ -303,11 +303,21 @@ export interface ShoppingList {
   name: string;
   status: ShoppingListStatus;
   created_at: string;
+  // The branch this shopping session is currently happening at (Epic 13: personal analytics).
+  // Read once per item check-off to snapshot ShoppingListItem.store_branch_id/price_at_check --
+  // changing it afterwards never rewrites already-checked items. Null for lists with no active
+  // trip selected (e.g. purely collaborative planning lists).
+  active_store_branch_id: number | null;
 }
 
 export interface ShoppingListCreate {
   name: string;
   client_request_id?: string;
+}
+
+// Sets (or, with null, clears) ShoppingList.active_store_branch_id.
+export interface ShoppingListActiveBranchUpdate {
+  store_branch_id: number | null;
 }
 
 export interface ShoppingListItem {
@@ -319,10 +329,16 @@ export interface ShoppingListItem {
   added_by: number;
   version: number;
   // Snapshotted server-side the moment `checked` transitions to true (this item's "purchase"
-  // signal for the dashboard, see DashboardSummary) -- both null again if unchecked.
+  // signal for the dashboard/analytics, see DashboardSummary/AnalyticsSummary) -- both null
+  // again if unchecked.
   checked_at: ISODateTime | null;
   // Decimal on the wire is a string, same convention as PriceAlertRead.target_price.
   price_at_check: string | null;
+  // Snapshot of the list's active_store_branch_id at the moment this item was checked -- the
+  // real price at that branch, never the cheapest price across any store. Null for items checked
+  // before this field existed, or with no active branch selected (see AnalyticsSummary's
+  // unattributed_store_count/"Sin tienda registrada" handling).
+  store_branch_id: number | null;
 }
 
 export interface ShoppingListItemCreate {
@@ -587,4 +603,127 @@ export interface DashboardSummary {
   last_purchase: LastPurchase | null;
   monthly_budget: string | null;
   remaining_budget: string | null;
+}
+
+// --- Analytics / Estadísticas personales (GET /analytics/summary) ------------------------------
+//
+// Epic 13. Strictly private -- user_id is always derived from the authenticated request, never a
+// client-supplied parameter. Every metric carries a PeriodMeta with data-quality info: Prezio only
+// started recording ShoppingListItem.store_branch_id with this epic, so historical purchases may
+// have no store attribution (`unattributed_store_count`) and/or no price_at_check
+// (`missing_price_count`) -- never inferred or backfilled.
+
+export type AnalyticsPeriod = '30d' | '3m' | '6m' | '12m' | 'all';
+
+export interface PeriodMeta {
+  period_start: ISODateTime;
+  period_end: ISODateTime;
+  sample_size: number;
+  coverage_percentage: number;
+  missing_price_count: number;
+  unattributed_store_count: number;
+}
+
+export interface TotalSpend {
+  total_spent: string;
+  meta: PeriodMeta;
+}
+
+export interface StoreSpend {
+  store_id: number;
+  store_name: string;
+  total_spent: string;
+  session_count: number;
+}
+
+export interface BranchSpend {
+  store_branch_id: number;
+  store_id: number;
+  store_name: string;
+  branch_name: string;
+  total_spent: string;
+  session_count: number;
+}
+
+// by_chain is the primary metric ("dónde gasto más" means supermarket, not category);
+// by_branch is optional detail. unattributed_spent covers items with no store_branch_id.
+export interface SpendByStore {
+  by_chain: StoreSpend[];
+  by_branch: BranchSpend[];
+  unattributed_spent: string;
+  unattributed_label: string;
+  meta: PeriodMeta;
+}
+
+// Defined by purchase-session frequency (distinct shopping-list + calendar-day visits to a
+// store), not by item count. store_id/store_name are null if no checked item in the period has
+// store attribution.
+export interface MostUsedStore {
+  store_id: number | null;
+  store_name: string | null;
+  session_count: number;
+  meta: PeriodMeta;
+}
+
+export interface CategorySpend {
+  category_id: number | null;
+  category_name: string;
+  total_spent: string;
+}
+
+export interface SpendByCategory {
+  categories: CategorySpend[];
+  meta: PeriodMeta;
+}
+
+export interface MonthlySpend {
+  year: number;
+  month: number;
+  total_spent: string;
+  // True for the current calendar month if `now` falls before month end -- lets the UI avoid
+  // plotting a partial month next to complete ones without saying so.
+  is_partial: boolean;
+}
+
+export interface MonthlyEvolution {
+  // Oldest first, current (possibly partial) month last.
+  months: MonthlySpend[];
+  meta: PeriodMeta;
+}
+
+export interface FavoriteProduct {
+  product_id: number;
+  product_name: string;
+  purchase_count: number;
+  total_quantity: number;
+}
+
+export interface FavoriteProducts {
+  products: FavoriteProduct[];
+  meta: PeriodMeta;
+}
+
+// A personal, estimated basket-inflation metric -- explicitly NOT the official/national CPI.
+// personal_inflation_percentage is null whenever has_sufficient_data is false, rather than
+// forcing a misleading number from too little purchase history.
+export interface PersonalInflation {
+  personal_inflation_percentage: number | null;
+  has_sufficient_data: boolean;
+  sample_size: number;
+  coverage_percentage: number;
+  window_months: number;
+  older_period_start: ISODateTime;
+  older_period_end: ISODateTime;
+  recent_period_start: ISODateTime;
+  recent_period_end: ISODateTime;
+}
+
+export interface AnalyticsSummary {
+  total_spend: TotalSpend;
+  spend_by_store: SpendByStore;
+  most_used_store: MostUsedStore;
+  spend_by_category: SpendByCategory;
+  monthly_evolution: MonthlyEvolution;
+  personal_inflation: PersonalInflation;
+  favorite_products: FavoriteProducts;
 }

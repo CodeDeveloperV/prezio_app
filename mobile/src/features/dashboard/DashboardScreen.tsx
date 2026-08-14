@@ -7,10 +7,12 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { ShoppingList, ShoppingListItem } from '@prezio/shared-types';
 
 import { MainTabParamList } from '../../app/navigation/types';
+import { DEFAULT_ICON_STROKE_WIDTH, IconChartBar, IconChevronRight } from '../../app/theme/icons';
 import { colorTokens } from '../../app/theme/tokens';
 import { ScreenContainer } from '../../shared/components/ScreenContainer';
 import { useAuthStore } from '../../shared/store/authStore';
 import { BudgetCard } from './components/BudgetCard';
+import { DashboardCard } from './components/DashboardCard';
 import { HeroCard } from './components/HeroCard';
 import { LastPurchaseCard } from './components/LastPurchaseCard';
 import { MonthStatsCard } from './components/MonthStatsCard';
@@ -18,6 +20,8 @@ import { MostPurchasedList } from './components/MostPurchasedList';
 import { SpendTrendChart } from './components/SpendTrendChart';
 import { listShoppingListItems, listShoppingLists } from '../shopping-lists/api/shoppingListsApi';
 import { useDashboardQuery } from './hooks/useDashboardQuery';
+
+const analyticsCtaPressStyle = { opacity: 0.7 };
 
 export function DashboardScreen() {
   const user = useAuthStore((state) => state.user);
@@ -115,6 +119,24 @@ export function DashboardScreen() {
           <LastPurchaseCard lastPurchase={dashboardQuery.data.last_purchase} />
 
           <MostPurchasedList products={dashboardQuery.data.most_purchased_products} />
+
+          <DashboardCard
+            onPress={() => navigation.navigate('Profile', { screen: 'Analytics' })}
+            pressStyle={analyticsCtaPressStyle}
+          >
+            <XStack alignItems="center" gap="$3">
+              <IconChartBar color={colorTokens.primary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <YStack flex={1}>
+                <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                  Ver estadísticas
+                </Text>
+                <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                  Gasto por supermercado, categorías, inflación de tu canasta y más.
+                </Text>
+              </YStack>
+              <IconChevronRight color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            </XStack>
+          </DashboardCard>
         </>
       )}
     </ScreenContainer>

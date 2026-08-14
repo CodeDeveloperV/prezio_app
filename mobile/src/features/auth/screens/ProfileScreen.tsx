@@ -9,6 +9,7 @@ import {
   SUBTLE_ICON_STROKE_WIDTH,
   IconBell,
   IconBellRinging,
+  IconChartBar,
   IconChevronRight,
   IconMail,
   IconReceipt,
@@ -80,6 +81,26 @@ export function ProfileScreen({ navigation }: Props) {
             <IconMail color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
             <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
               Invitaciones
+            </Text>
+            <IconChevronRight
+              color={colorTokens.textSecondary}
+              size={18}
+              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+            />
+          </XStack>
+
+          <XStack
+            onPress={() => navigation.navigate('Analytics')}
+            backgroundColor="$surface"
+            borderRadius="$3"
+            padding="$3"
+            alignItems="center"
+            gap="$3"
+            pressStyle={rowPressStyle}
+          >
+            <IconChartBar color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
+              Estadísticas
             </Text>
             <IconChevronRight
               color={colorTokens.textSecondary}
