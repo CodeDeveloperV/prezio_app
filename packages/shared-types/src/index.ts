@@ -244,6 +244,10 @@ export interface CreateProductRequest {
 
 export type Availability = 'in_stock' | 'out_of_stock' | 'unknown' | 'discontinued';
 
+// Who originated a PriceHistory entry -- lets the UI distinguish "reportado por la comunidad"
+// (mobile/crowdsourced) from "confirmado por el supermercado" (B2B portal, see Fase 10.6 below).
+export type PriceUpdateSource = 'community' | 'merchant' | 'system';
+
 // version drives optimistic concurrency: price updates must send the last-seen
 // version; a mismatch means the server's price already moved (see PriceConflictResponse).
 export interface StoreProductRead {
@@ -275,6 +279,7 @@ export interface PriceHistoryRead {
   previous_price: number | null;
   new_price: number;
   updated_by: PriceHistoryUpdatedByRead | null;
+  source: PriceUpdateSource;
   updated_at: ISODateTime;
 }
 
@@ -846,4 +851,81 @@ export interface CreateListingRequest {
 
 export interface UpdateListingStatusRequest {
   status: StoreProductStatus;
+}
+
+// --- B2B pricing (web-admin portal) ---------------------------------------------------------
+// Fase 10.6. Price/availability management for StoreProducts already listed at the
+// organization's branches -- never creates/edits a listing itself (see B2B catalog above).
+// The portal never exposes 'discontinued' as an availability choice on write (that would blur
+// it with listing_status=INACTIVE); Availability itself (already defined above) stays the full
+// read-side type since a listing's history can still show it if set some other way.
+export type PricingAvailabilityChoice = 'in_stock' | 'out_of_stock' | 'unknown';
+
+export interface PricingListItemRead {
+  store_product_id: number;
+  branch_id: number;
+  branch_name: string;
+  product_id: number;
+  canonical_name: string;
+  brand_name: string | null;
+  presentation: string | null;
+  category_name: string | null;
+  barcode: string | null;
+  image_url: string | null;
+  current_price: number;
+  previous_price: number | null;
+  currency: string;
+  availability: Availability;
+  listing_status: StoreProductStatus;
+  version: number;
+  last_verified_at: ISODateTime | null;
+  updated_at: ISODateTime;
+  last_updated_by: PriceHistoryUpdatedByRead | null;
+  last_update_source: PriceUpdateSource | null;
+}
+
+// PATCH-style: at least one of price/availability must be provided (enforced server-side).
+// price is a string on the wire (same convention as CreateListingRequest.initial_price) to
+// avoid JS floating-point round-tripping through a Decimal-backed API.
+export interface B2BPriceUpdateRequest {
+  price?: string;
+  availability?: PricingAvailabilityChoice;
+  version: number;
+}
+
+// Returned with HTTP 409 when submitted_version is stale -- let the user choose to adopt
+// current_price/current_availability/current_version (and resubmit) or go back to editing.
+export interface B2BPriceConflictRead {
+  detail: string;
+  store_product_id: number;
+  submitted_price: number | null;
+  submitted_availability: Availability | null;
+  submitted_version: number;
+  current_price: number;
+  current_availability: Availability | null;
+  current_version: number;
+}
+
+export interface B2BBatchUpdateItem {
+  store_product_id: number;
+  price?: string;
+  availability?: PricingAvailabilityChoice;
+  version: number;
+}
+
+export interface B2BBatchUpdateRequest {
+  items: B2BBatchUpdateItem[];
+}
+
+export interface B2BBatchFailedItem {
+  store_product_id: number;
+  error: string;
+}
+
+// Independent per-item processing -- one item's conflict/failure never blocks the rest of the
+// batch (see B2BPricingService.batch_update).
+export interface B2BBatchUpdateResponse {
+  updated: PricingListItemRead[];
+  conflicts: B2BPriceConflictRead[];
+  failed: B2BBatchFailedItem[];
 }

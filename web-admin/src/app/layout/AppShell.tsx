@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { IconChevronDown, IconLogout } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
@@ -31,7 +31,11 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function OrganizationSwitcher() {
-  const memberships = useAuthStore((state) => state.memberships.filter((m) => m.status === 'active'));
+  const allMemberships = useAuthStore((state) => state.memberships);
+  const memberships = useMemo(
+    () => allMemberships.filter((m) => m.status === 'active'),
+    [allMemberships],
+  );
   const activeOrganizationId = useAuthStore((state) => state.activeOrganizationId);
   const setActiveOrganizationId = useAuthStore((state) => state.setActiveOrganizationId);
   const activeMembership = useActiveMembership();
