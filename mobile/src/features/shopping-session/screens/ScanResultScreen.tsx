@@ -1,31 +1,35 @@
 import { useState } from 'react';
 import { Image, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button, Card, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
-  STRONG_ICON_STROKE_WIDTH,
   IconBellRinging,
   IconCheck,
   IconClock,
-  IconEdit,
   IconFlag,
   IconHistory,
+  IconPlus,
+  IconScale,
+  IconShoppingCart,
 } from '../../../app/theme/icons';
 import { colorTokens } from '../../../app/theme/tokens';
 import { useReportIncorrectBarcodeMutation } from '../../catalog/hooks/useCatalogMutations';
-import { useConfirmMatchMutation } from '../../pricing/hooks/usePricingMutations';
-import { cacheStoreProduct } from '../../../shared/services/db/catalogCache';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
+import { FlowHeader } from '../components/FlowHeader';
+import { addShoppingListItem, createShoppingList } from '../../shopping-lists/api/shoppingListsApi';
+import { selectActiveShoppingList } from '../../shopping-lists/utils/selectActiveShoppingList';
+import { useShoppingListsQuery } from '../../shopping-lists/hooks/useShoppingLists';
 
 type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'ScanResult'>;
 const styles = StyleSheet.create({
   productImage: {
-    width: 160,
-    height: 160,
-    borderRadius: 12,
+    width: 136,
+    height: 136,
+    borderRadius: 16,
   },
 });
 
@@ -36,35 +40,56 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString('es-PA', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function formatPrice(price: string | number): string {
+  const numeric = Number(price);
+  if (Number.isNaN(numeric)) {
+    return String(price);
+  }
+  return numeric.toLocaleString('es-PA', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function ScanResultScreen({ route, navigation }: Props) {
   const { storeBranchId, barcodeId, product, storeProduct, fromCache = false } = route.params;
-  const [confirmedJustNow, setConfirmedJustNow] = useState(false);
+  const [addedToActiveList, setAddedToActiveList] = useState(false);
+  const [createdNewPurchase, setCreatedNewPurchase] = useState(false);
 
-  const confirmMatchMutation = useConfirmMatchMutation();
+  const shoppingListsQuery = useShoppingListsQuery();
+  const activeShoppingList = selectActiveShoppingList(shoppingListsQuery.data);
+  const queryClient = useQueryClient();
   const reportBarcodeMutation = useReportIncorrectBarcodeMutation();
 
-  const handleConfirmMatch = () => {
-    if (!storeProduct) {
-      return;
-    }
-    confirmMatchMutation.mutate(storeProduct.id, {
-      onSuccess: (updated) => {
-        setConfirmedJustNow(true);
-        cacheStoreProduct(updated).catch(() => undefined);
-      },
-    });
-  };
+  const addToActiveListMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeShoppingList) {
+        throw new Error('No active shopping list');
+      }
+      return addShoppingListItem(activeShoppingList.id, {
+        product_id: product.id,
+        quantity: 1,
+      });
+    },
+    onSuccess: () => {
+      setAddedToActiveList(true);
+      queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+    },
+  });
 
-  const handlePriceChanged = () => {
-    if (!storeProduct) {
-      return;
-    }
-    navigation.navigate('PriceUpdate', {
-      storeProductId: storeProduct.id,
-      currentPrice: String(storeProduct.current_price),
-      version: storeProduct.version,
-    });
-  };
+  const createNewPurchaseMutation = useMutation({
+    mutationFn: async () => {
+      const shoppingList = await createShoppingList({ name: 'Compra de hoy' });
+      return addShoppingListItem(shoppingList.id, {
+        product_id: product.id,
+        quantity: 1,
+      });
+    },
+    onSuccess: () => {
+      setCreatedNewPurchase(true);
+      queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+    },
+  });
 
   const handleReportIncorrect = () => {
     reportBarcodeMutation.mutate(barcodeId, {
@@ -87,116 +112,232 @@ export function ScanResultScreen({ route, navigation }: Props) {
     });
   };
 
+  const handleCompare = () => {
+    navigation.getParent()?.navigate('Comparator' as never);
+  };
+
+  const handleAddToActiveList = async () => {
+    if (!activeShoppingList) {
+      return;
+    }
+    await addToActiveListMutation.mutateAsync();
+  };
+
+  const handleCreateNewPurchase = async () => {
+    await createNewPurchaseMutation.mutateAsync();
+  };
+
   return (
     <ScreenContainer>
-      <YStack alignItems="center" gap="$3">
-        {product.image_url ? (
-          <Image
-            source={{ uri: product.image_url }}
-            style={styles.productImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <YStack width={160} height={160} borderRadius={12} backgroundColor="$surface" />
-        )}
+      <FlowHeader
+        title="Producto encontrado"
+        subtitle={product.canonical_name}
+        onBack={() => navigation.goBack()}
+      />
 
-        <YStack alignItems="center" gap="$1">
-          {product.brand_name && (
-            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-              {product.brand_name}
-            </Text>
-          )}
-          <Text fontFamily="$heading" fontSize="$lg" color="$color" textAlign="center">
-            {product.canonical_name}
-          </Text>
-          {product.presentation && (
-            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-              {product.presentation}
-            </Text>
-          )}
-        </YStack>
+      <YStack gap="$4">
+        <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$4">
+          <XStack alignItems="center" gap="$3">
+            {product.image_url ? (
+              <Image source={{ uri: product.image_url }} style={styles.productImage} resizeMode="contain" />
+            ) : (
+              <YStack
+                width={136}
+                height={136}
+                borderRadius={16}
+                backgroundColor="rgba(15, 23, 42, 0.06)"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <IconShoppingCart color={colorTokens.textSecondary} size={34} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              </YStack>
+            )}
 
-        <YStack alignItems="center" gap="$1" backgroundColor="$surface" borderRadius="$3" padding="$4" width="100%">
+            <YStack flex={1} gap="$1">
+              {product.brand_name && (
+                <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+                  {product.brand_name}
+                </Text>
+              )}
+              <Text fontFamily="$heading" fontSize="$lg" color="$color">
+                {product.canonical_name}
+              </Text>
+              {product.presentation && (
+                <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+                  {product.presentation}
+                </Text>
+              )}
+
+              <XStack alignItems="center" gap="$2" flexWrap="wrap" marginTop="$1">
+                <YStack backgroundColor="rgba(34, 197, 94, 0.10)" borderRadius="$full" paddingHorizontal="$3" paddingVertical="$1.5">
+                  <Text fontFamily="$body" fontSize="$xs" color="$primary">
+                    Código validado
+                  </Text>
+                </YStack>
+                {fromCache && (
+                  <YStack backgroundColor="rgba(239, 68, 68, 0.10)" borderRadius="$full" paddingHorizontal="$3" paddingVertical="$1.5">
+                    <Text fontFamily="$body" fontSize="$xs" color="$danger">
+                      Sin conexión
+                    </Text>
+                  </YStack>
+                )}
+              </XStack>
+            </YStack>
+          </XStack>
+        </Card>
+
+        <Card elevation={3} backgroundColor={colorTokens.textPrimary} borderRadius="$4" padding="$5" gap="$4">
+          <XStack alignItems="flex-start" gap="$3">
+            <YStack
+              width={48}
+              height={48}
+              borderRadius="$full"
+              backgroundColor="rgba(34, 197, 94, 0.14)"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <IconCheck color={colorTokens.primary} size={24} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            </YStack>
+
+            <YStack flex={1} gap="$1">
+              <Text fontFamily="$body" fontSize="$xs" letterSpacing={1.2} color="$primary">
+                Precio encontrado
+              </Text>
+              <Text fontFamily="$heading" fontSize="$xl" color="$white">
+                {product.canonical_name}
+              </Text>
+            </YStack>
+          </XStack>
+
           {storeProduct ? (
-            <>
+            <YStack gap="$2">
               <Text fontFamily="$heading" fontSize="$display" color="$primary">
-                ${storeProduct.current_price} {storeProduct.currency}
+                ${formatPrice(storeProduct.current_price)}
               </Text>
-              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                Actualizado: {formatDate(confirmedJustNow ? new Date().toISOString() : storeProduct.last_verified_at)}
+              <Text fontFamily="$body" fontSize="$sm" color="#CBD5E1">
+                Precio en esta sucursal · actualizado {formatDate(storeProduct.last_verified_at)}
               </Text>
-            </>
+            </YStack>
           ) : (
-            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-              Sin precio registrado en esta sucursal todavía.
-            </Text>
+            <YStack gap="$2">
+              <Text fontFamily="$heading" fontSize="$xl" color="$white">
+                Sin precio registrado
+              </Text>
+              <Text fontFamily="$body" fontSize="$sm" color="#CBD5E1">
+                Todavía no tenemos un valor confirmado en esta sucursal.
+              </Text>
+            </YStack>
           )}
+
           {fromCache && (
-            <XStack alignItems="center" gap="$1" marginTop="$1">
-              <IconClock color={colorTokens.textSecondary} size={12} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+            <XStack alignItems="center" gap="$2" backgroundColor="rgba(255, 255, 255, 0.06)" borderRadius="$3" padding="$3">
+              <IconClock color={colorTokens.primary} size={14} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <Text fontFamily="$body" fontSize="$xs" color="#E2E8F0" flex={1}>
                 Sin conexión · precio guardado en caché, puede no ser el actual
               </Text>
             </XStack>
           )}
-        </YStack>
-      </YStack>
+        </Card>
 
-      <YStack gap="$2">
-        <Button
-          disabled={!storeProduct || fromCache}
-          backgroundColor="$primary"
-          color="$white"
-          icon={<IconCheck color={colorTokens.white} size={18} strokeWidth={STRONG_ICON_STROKE_WIDTH} />}
-          onPress={handleConfirmMatch}
-        >
-          {confirmedJustNow ? 'Confirmado' : 'Coincide'}
-        </Button>
+        <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
+          <YStack gap="$1">
+            <Text fontFamily="$heading" fontSize="$sm" color="$color">
+              Guardar o comparar
+            </Text>
+            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+              Elegí si querés agregar este producto a una compra existente o crear una nueva.
+            </Text>
+          </YStack>
 
-        <Button
-          disabled={!storeProduct || fromCache}
-          backgroundColor="$surface"
-          icon={<IconEdit color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
-          onPress={handlePriceChanged}
-        >
-          Cambió el precio
-        </Button>
+          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            {activeShoppingList ? (
+              <YStack flex={1} minWidth={180}>
+                <Button
+                  backgroundColor="$primary"
+                  color="$white"
+                  icon={
+                    addedToActiveList ? (
+                      <IconCheck color={colorTokens.white} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                    ) : (
+                      <IconShoppingCart color={colorTokens.white} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                    )
+                  }
+                  disabled={addToActiveListMutation.isPending || addedToActiveList || createdNewPurchase}
+                  onPress={handleAddToActiveList}
+                >
+                  {addedToActiveList ? 'Agregado a compra' : `Agregar a ${activeShoppingList.name}`}
+                </Button>
+                <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" marginTop="$1">
+                  Compra activa: {activeShoppingList.name}
+                </Text>
+              </YStack>
+            ) : (
+              <YStack flex={1} minWidth={180}>
+                <Button backgroundColor="$surface" disabled>
+                  No hay compra activa
+                </Button>
+                <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" marginTop="$1">
+                  Creá una nueva compra para usar este atajo.
+                </Text>
+              </YStack>
+            )}
 
-        <Button
-          disabled={fromCache}
-          backgroundColor="$surface"
-          icon={
-            <IconBellRinging
-              color={colorTokens.textPrimary}
-              size={18}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-          }
-          onPress={handleCreateAlert}
-        >
-          Crear alerta
-        </Button>
+            <YStack flex={1} minWidth={180}>
+              <Button
+                backgroundColor="$surface"
+                icon={<IconPlus color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+                disabled={createNewPurchaseMutation.isPending || createdNewPurchase}
+                onPress={handleCreateNewPurchase}
+              >
+                {createdNewPurchase ? 'Nueva compra creada' : 'Agregar a nueva compra'}
+              </Button>
+            </YStack>
+          </XStack>
 
-        <XStack gap="$2">
-          <Button
-            flex={1}
-            disabled={fromCache}
-            backgroundColor="$surface"
-            icon={<IconFlag color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
-            onPress={handleReportIncorrect}
-          >
-            Producto incorrecto
-          </Button>
-          <Button
-            flex={1}
-            disabled={!storeProduct || fromCache}
-            backgroundColor="$surface"
-            icon={<IconHistory color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
-            onPress={handleViewHistory}
-          >
-            Ver historial
-          </Button>
-        </XStack>
+          <XStack gap="$2" flexWrap="wrap">
+            <Button
+              flex={1}
+              minWidth={150}
+              backgroundColor="$surface"
+              icon={<IconScale color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={handleCompare}
+            >
+              Comparar precios
+            </Button>
+            <Button
+              flex={1}
+              minWidth={150}
+              backgroundColor="$surface"
+              icon={<IconBellRinging color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={handleCreateAlert}
+            >
+              Crear alerta
+            </Button>
+          </XStack>
+
+          <XStack gap="$2" flexWrap="wrap">
+            <Button
+              flex={1}
+              minWidth={150}
+              backgroundColor="$surface"
+              icon={<IconHistory color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={handleViewHistory}
+              disabled={!storeProduct || fromCache}
+            >
+              Ver historial
+            </Button>
+            <Button
+              flex={1}
+              minWidth={150}
+              backgroundColor="$surface"
+              icon={<IconFlag color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={handleReportIncorrect}
+              disabled={fromCache}
+            >
+              Producto incorrecto
+            </Button>
+          </XStack>
+        </Card>
 
         <Button unstyled onPress={() => navigation.replace('Scan', { storeBranchId })}>
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">

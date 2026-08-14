@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
-import { Image, StyleSheet } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, type TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Input, Separator, Text, XStack, YStack } from 'tamagui';
 
@@ -11,6 +11,8 @@ import { useGoogleLoginMutation, useRegisterMutation } from '../hooks/useAuthMut
 import { signInWithGoogle } from '../services/googleSignIn';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
+  IconEye,
+  IconEyeOff,
   IconLock,
   IconMail,
 } from '../../../app/theme/icons';
@@ -33,7 +35,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 260,
-    backgroundColor: '#22C55E',
+    backgroundColor: colorTokens.primary,
     opacity: 0.08,
   },
   glowBottomLeft: {
@@ -43,7 +45,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 180,
-    backgroundColor: '#0F172A',
+    backgroundColor: colorTokens.textPrimary,
     opacity: 0.05,
   },
   heroBadge: {
@@ -54,7 +56,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#0F172A',
+    shadowColor: colorTokens.textPrimary,
     shadowOpacity: 0.12,
     shadowRadius: 18,
     shadowOffset: {
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   formCard: {
-    shadowColor: '#0F172A',
+    shadowColor: colorTokens.textPrimary,
     shadowOpacity: 0.08,
     shadowRadius: 24,
     shadowOffset: {
@@ -87,14 +89,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fieldTrailingIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
-function AuthField({
-  icon,
-  ...inputProps
-}: {
-  icon: ReactNode;
-} & ComponentProps<typeof Input>) {
+const AuthField = forwardRef<
+  TextInput,
+  {
+    icon: ReactNode;
+    trailing?: ReactNode;
+    onTrailingPress?: () => void;
+    trailingAccessibilityLabel?: string;
+  } & ComponentProps<typeof Input>
+>(function AuthFieldInner(
+  { icon, trailing, onTrailingPress, trailingAccessibilityLabel, ...inputProps },
+  ref,
+) {
   return (
     <XStack
       alignItems="center"
@@ -110,6 +124,7 @@ function AuthField({
         {icon}
       </YStack>
       <Input
+        ref={ref}
         flex={1}
         unstyled
         fontFamily="$body"
@@ -118,13 +133,26 @@ function AuthField({
         placeholderTextColor={colorTokens.textSecondary}
         {...inputProps}
       />
+      {trailing ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={trailingAccessibilityLabel}
+          hitSlop={8}
+          onPress={onTrailingPress}
+          style={styles.fieldTrailingIcon}
+        >
+          {trailing}
+        </Pressable>
+      ) : null}
     </XStack>
   );
-}
+});
 
 export function RegisterScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const registerMutation = useRegisterMutation();
   const googleLoginMutation = useGoogleLoginMutation();
@@ -161,6 +189,7 @@ export function RegisterScreen({ navigation }: Props) {
   };
 
   const isSubmitting = registerMutation.isPending || googleLoginMutation.isPending;
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !isSubmitting;
 
   return (
     <ScreenContainer>
@@ -213,13 +242,21 @@ export function RegisterScreen({ navigation }: Props) {
                 />
               }
               placeholder="Correo electrónico"
+              accessibilityLabel="Correo electrónico"
               autoCapitalize="none"
+              autoCorrect={false}
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
+              blurOnSubmit={false}
               value={email}
               onChangeText={setEmail}
             />
 
             <AuthField
+              ref={passwordInputRef}
               icon={
                 <IconLock
                   color={colorTokens.textSecondary}
@@ -228,18 +265,45 @@ export function RegisterScreen({ navigation }: Props) {
                 />
               }
               placeholder="Contraseña"
-              secureTextEntry
+              accessibilityLabel="Contraseña"
+              secureTextEntry={!isPasswordVisible}
+              autoComplete="password-new"
+              textContentType="newPassword"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (canSubmit) {
+                  handleRegister();
+                }
+              }}
               value={password}
               onChangeText={setPassword}
+              trailing={
+                isPasswordVisible ? (
+                  <IconEyeOff
+                    color={colorTokens.textSecondary}
+                    size={20}
+                    strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                  />
+                ) : (
+                  <IconEye
+                    color={colorTokens.textSecondary}
+                    size={20}
+                    strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                  />
+                )
+              }
+              onTrailingPress={() => setIsPasswordVisible((visible) => !visible)}
+              trailingAccessibilityLabel={
+                isPasswordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'
+              }
             />
-
           </YStack>
 
           <YStack gap="$3">
             <Button
               onPress={handleRegister}
-              disabled={isSubmitting}
-              opacity={isSubmitting ? 0.7 : 1}
+              disabled={!canSubmit}
+              opacity={canSubmit ? 1 : 0.7}
               backgroundColor="$primary"
               pressStyle={primaryPressStyle}
               borderRadius="$4"
@@ -247,9 +311,13 @@ export function RegisterScreen({ navigation }: Props) {
               width="92%"
               alignSelf="center"
             >
-              <Text fontFamily="$heading" fontSize="$md" color="$white">
-                Crear cuenta
-              </Text>
+              {registerMutation.isPending ? (
+                <ActivityIndicator color={colorTokens.white} />
+              ) : (
+                <Text fontFamily="$heading" fontSize="$md" color="$white">
+                  Crear cuenta
+                </Text>
+              )}
             </Button>
 
             <XStack alignItems="center" gap="$3">
@@ -270,12 +338,18 @@ export function RegisterScreen({ navigation }: Props) {
               borderRadius="$4"
               height={54}
               icon={
-                <GoogleBrandIcon width={20} height={20} />
+                googleLoginMutation.isPending ? undefined : (
+                  <GoogleBrandIcon width={20} height={20} />
+                )
               }
             >
-              <Text fontFamily="$body" fontSize="$sm" color="$color">
-                Continuar con Google
-              </Text>
+              {googleLoginMutation.isPending ? (
+                <ActivityIndicator color={colorTokens.textPrimary} />
+              ) : (
+                <Text fontFamily="$body" fontSize="$sm" color="$color">
+                  Continuar con Google
+                </Text>
+              )}
             </Button>
           </YStack>
         </YStack>
@@ -286,6 +360,9 @@ export function RegisterScreen({ navigation }: Props) {
           </Text>
           <Text
             onPress={() => navigation.navigate('Login')}
+            accessibilityRole="button"
+            accessibilityLabel="Iniciá sesión, ir a la pantalla de acceso"
+            hitSlop={8}
             fontFamily="$heading"
             fontSize="$sm"
             color="$primary"

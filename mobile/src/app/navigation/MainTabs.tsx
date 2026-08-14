@@ -32,7 +32,7 @@ const TAB_ICONS = {
 const TAB_LABELS = {
   Dashboard: 'Inicio',
   Comparator: 'Comparar',
-  NewPurchase: 'Nueva compra',
+  NewPurchase: 'Escanear',
   History: 'Historial',
   Profile: 'Perfil',
 } as const;
@@ -230,7 +230,7 @@ export function MainTabs() {
       <Tab.Screen
         name="NewPurchase"
         component={ShoppingSessionStack}
-        options={{ title: 'Nueva compra' }}
+        options={{ title: 'Escanear' }}
       />
       <Tab.Screen
         name="History"

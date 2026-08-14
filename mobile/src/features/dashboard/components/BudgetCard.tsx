@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Button, Card, Input, Text, XStack, YStack } from 'tamagui';
+import { Button, Input, Text, XStack, YStack } from 'tamagui';
 
 import { DEFAULT_ICON_STROKE_WIDTH, IconEdit, IconWallet } from '../../../app/theme/icons';
 import { colorTokens } from '../../../app/theme/tokens';
 import { useUpdateBudgetMutation } from '../hooks/useUpdateBudgetMutation';
 import { formatMoney } from '../utils/format';
+import { DashboardCard } from './DashboardCard';
 
 interface BudgetCardProps {
   monthlyBudget: string | null;
@@ -35,15 +36,7 @@ export function BudgetCard({ monthlyBudget, remainingBudget }: BudgetCardProps) 
   };
 
   return (
-    <Card
-      elevation={2}
-      backgroundColor="$surface"
-      borderWidth={1}
-      borderColor="$borderColor"
-      borderRadius="$4"
-      padding="$5"
-      gap="$3"
-    >
+    <DashboardCard>
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap="$2">
           <IconWallet color={colorTokens.textSecondary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
@@ -52,7 +45,14 @@ export function BudgetCard({ monthlyBudget, remainingBudget }: BudgetCardProps) 
           </Text>
         </XStack>
         {!editing && (
-          <Button size="$2" circular chromeless onPress={() => setEditing(true)}>
+          <Button
+            size="$2"
+            circular
+            chromeless
+            hitSlop={8}
+            accessibilityLabel="Editar presupuesto mensual"
+            onPress={() => setEditing(true)}
+          >
             <IconEdit color={colorTokens.textSecondary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
           </Button>
         )}
@@ -72,9 +72,12 @@ export function BudgetCard({ monthlyBudget, remainingBudget }: BudgetCardProps) 
           </Button>
         </XStack>
       ) : monthlyBudget === null ? (
-        <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-          Todavía no defines un presupuesto mensual.
-        </Text>
+        <YStack alignItems="center" gap="$2" paddingVertical="$2">
+          <IconWallet color={colorTokens.textSecondary} size={28} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
+            Todavía no defines un presupuesto mensual.
+          </Text>
+        </YStack>
       ) : (
         <YStack gap="$1">
           <Text fontFamily="$heading" fontSize="$xl" color={remainingBudget !== null && Number(remainingBudget) < 0 ? '$danger' : '$color'}>
@@ -85,6 +88,6 @@ export function BudgetCard({ monthlyBudget, remainingBudget }: BudgetCardProps) 
           </Text>
         </YStack>
       )}
-    </Card>
+    </DashboardCard>
   );
 }

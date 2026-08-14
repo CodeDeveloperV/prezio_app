@@ -43,7 +43,7 @@ export function MostPurchasedList({ products }: MostPurchasedListProps) {
                 alignItems="center"
                 justifyContent="center"
               >
-                <Text fontFamily="$heading" fontSize="$xs" color="$primary">
+                <Text fontFamily="$heading" fontSize="$xs" color="$primaryText">
                   {index + 1}
                 </Text>
               </YStack>

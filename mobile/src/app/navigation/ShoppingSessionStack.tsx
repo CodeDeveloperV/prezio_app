@@ -18,19 +18,19 @@ export function ShoppingSessionStack() {
       <Stack.Screen
         name="BranchSelect"
         component={BranchSelectScreen}
-        options={{ title: 'Nueva compra', headerShown: false }}
+        options={{ title: 'Escanear', headerShown: false }}
       />
-      <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Escanear' }} />
-      <Stack.Screen name="ScanResult" component={ScanResultScreen} options={{ title: 'Producto' }} />
+      <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Escanear', headerShown: false }} />
+      <Stack.Screen name="ScanResult" component={ScanResultScreen} options={{ title: 'Producto', headerShown: false }} />
       <Stack.Screen
         name="ScanDisambiguation"
         component={ScanDisambiguationScreen}
-        options={{ title: '¿Cuál es tu producto?' }}
+        options={{ title: '¿Cuál es tu producto?', headerShown: false }}
       />
       <Stack.Screen
         name="CreateProduct"
         component={CreateProductScreen}
-        options={{ title: 'Nuevo producto' }}
+        options={{ title: 'Nuevo producto', headerShown: false }}
       />
       <Stack.Screen
         name="PriceHistory"

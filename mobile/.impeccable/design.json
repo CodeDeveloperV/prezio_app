@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-14T01:11:23Z",
+  "title": "Design System: Prezio",
+  "extensions": {
+    "colorMeta": {
+      "fresh-green": {
+        "role": "primary",
+        "displayName": "Fresh Savings Green",
+        "canonical": "#22C55E",
+        "tonalRamp": ["#052e16", "#14532d", "#166534", "#16a34a", "#22c55e", "#4ade80", "#86efac", "#dcfce7"]
+      },
+      "fresh-green-press": {
+        "role": "primary-press",
+        "displayName": "Fresh Savings Green, Pressed",
+        "canonical": "#16A34A",
+        "tonalRamp": ["#052e16", "#14532d", "#166534", "#15803d", "#16a34a", "#4ade80", "#86efac", "#dcfce7"]
+      },
+      "deep-slate": {
+        "role": "neutral",
+        "displayName": "Deep Slate",
+        "canonical": "#0F172A",
+        "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"]
+      },
+      "muted-slate": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#64748B",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0"]
+      },
+      "soft-mist": {
+        "role": "neutral",
+        "displayName": "Soft Mist Gray",
+        "canonical": "#F3F4F6",
+        "tonalRamp": ["#111827", "#1f2937", "#374151", "#6b7280", "#9ca3af", "#d1d5db", "#e5e7eb", "#f3f4f6"]
+      },
+      "paper-white": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#9ca3af", "#d1d5db", "#e5e7eb", "#f3f4f6", "#f9fafb", "#fafafa", "#fdfdfd", "#ffffff"]
+      },
+      "alert-red": {
+        "role": "danger",
+        "displayName": "Alert Red",
+        "canonical": "#EF4444",
+        "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"]
+      },
+      "warm-amber": {
+        "role": "warning",
+        "displayName": "Warm Amber",
+        "canonical": "#F59E0B",
+        "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fef3c7"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero metrics: active-session progress, savings totals." },
+      "headline": { "displayName": "Headline", "purpose": "Section-defining numbers on cards." },
+      "title": { "displayName": "Title", "purpose": "Screen and card titles." },
+      "body": { "displayName": "Body", "purpose": "Descriptive copy, list item text, input values." },
+      "label": { "displayName": "Label", "purpose": "Tab labels, helper text, chip text, timestamps." }
+    },
+    "shadows": [
+      { "name": "card-resting", "value": "elevation 1-2, diffuse low-opacity shadow", "purpose": "Default card/surface elevation." },
+      { "name": "card-emphasized", "value": "elevation 3", "purpose": "The active hero card and other 'current important thing' surfaces." },
+      { "name": "dock-lift", "value": "0 -8px 24px rgba(15, 23, 42, 0.12), elevation 18", "purpose": "The floating tab bar dock only." },
+      { "name": "halo-glow", "value": "0 8px 14px rgba(22, 163, 74, 0.34)", "purpose": "The primary scan button only — the system's one dramatic shadow." }
+    ],
+    "motion": [
+      { "name": "press-scale", "value": "scale(0.96)", "purpose": "Press feedback on the tab bar's primary scan action." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width, 56px-tall primary CTA. The app's single positive/action color.",
+      "html": "<button class=\"ds-btn-primary\">Nueva compra</button>",
+      "css": ".ds-btn-primary { background: #22C55E; color: #FFFFFF; min-height: 56px; padding: 16px 24px; border-radius: 16px; border: none; font-family: 'Poppins-SemiBold', sans-serif; font-size: 16px; font-weight: 600; transition: background 0.15s ease; } .ds-btn-primary:hover, .ds-btn-primary:focus-visible { background: #16A34A; } .ds-btn-primary:active { background: #16A34A; transform: scale(0.98); }"
+    },
+    {
+      "name": "Category Chip (selected)",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Selected state of a horizontally-scrolling category pill.",
+      "html": "<button class=\"ds-chip-selected\">Lácteos</button>",
+      "css": ".ds-chip-selected { background: #22C55E; color: #FFFFFF; border: 1px solid #22C55E; border-radius: 999px; padding: 8px 12px; min-height: 40px; font-family: 'Poppins-Regular', sans-serif; font-size: 14px; }"
+    },
+    {
+      "name": "Category Chip (unselected)",
+      "kind": "chip",
+      "refersTo": "chip-unselected",
+      "description": "Default/unselected state of a category pill.",
+      "html": "<button class=\"ds-chip-unselected\">Lácteos</button>",
+      "css": ".ds-chip-unselected { background: #F3F4F6; color: #0F172A; border: 1px solid #F3F4F6; border-radius: 999px; padding: 8px 12px; min-height: 40px; font-family: 'Poppins-Regular', sans-serif; font-size: 14px; } .ds-chip-unselected:hover, .ds-chip-unselected:focus-visible { border-color: #64748B; }"
+    },
+    {
+      "name": "Surface Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Default content card — Soft Mist Gray fill, resting elevation.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-title\">Armá tu lista</p><p class=\"ds-card-body\">Comparemos precios en el súper.</p></div>",
+      "css": ".ds-card { background: #F3F4F6; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); display: flex; flex-direction: column; gap: 8px; } .ds-card-title { font-family: 'Poppins-SemiBold', sans-serif; font-size: 18px; color: #0F172A; margin: 0; } .ds-card-body { font-family: 'Poppins-Regular', sans-serif; font-size: 14px; color: #64748B; margin: 0; }"
+    },
+    {
+      "name": "Tinted Icon Badge",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature status badge: a rounded circle tinted at low opacity with the semantic color, housing an outline icon at full strength.",
+      "html": "<div class=\"ds-icon-badge\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#22C55E\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z\"/><path d=\"M3 6h18\"/><path d=\"M16 10a4 4 0 0 1-8 0\"/></svg></div>",
+      "css": ".ds-icon-badge { width: 48px; height: 48px; border-radius: 999px; background: rgba(34, 197, 94, 0.14); display: flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Primary Scan Action (Nav)",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "The tab bar's floating primary action: a circular button inside a soft green halo, raised above the dock.",
+      "html": "<div class=\"ds-scan-halo\"><button class=\"ds-scan-fab\" aria-label=\"Escanear\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"7\" width=\"18\" height=\"13\" rx=\"2\"/><path d=\"M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/></svg></button></div>",
+      "css": ".ds-scan-halo { width: 80px; height: 80px; border-radius: 40px; background: rgba(34, 197, 94, 0.12); display: flex; align-items: center; justify-content: center; margin-top: -34px; } .ds-scan-fab { width: 58px; height: 58px; border-radius: 29px; background: #22C55E; border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 14px rgba(22, 163, 74, 0.34); transition: transform 0.15s ease; } .ds-scan-fab:active { transform: scale(0.96); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La Libreta Fresca (The Fresh Ledger)",
+    "overview": "Prezio reads as a shopping notebook that also keeps the books: every screen behaves like a page — soft, layered cards holding one idea each — while a single vivid green carries the app's only \"good news\" signal: money saved, an action completed, a purchase in progress. The mood is optimistic and agile, never a cold financial dashboard and never a stark utilitarian grid. Poppins' rounded geometry, generous corner radii, and unhurried 56px-tall primary actions make the app feel warm and solid under the thumb rather than clinical.\n\nThe one place the system allows itself real drama is the scan action at the center of the tab bar: a raised pill dock lifts the whole navigation off the bottom edge, and the primary button glows inside a soft green halo. Everywhere else, depth stays quiet.",
+    "keyCharacteristics": [
+      "Vivid savings-green as the sole \"good news\" signal, used sparingly against a white/slate canvas",
+      "Poppins SemiBold headings pair with Poppins Regular/Medium body for a warm, rounded voice",
+      "Soft, layered elevation on every surface, with exactly one dramatic flourish: the scan button's halo",
+      "Generous corner radii and 56px-tall primary actions make every tap feel solid and unhurried",
+      "Rounded, low-opacity tinted icon badges carry semantic color without shouting"
+    ],
+    "rules": [
+      { "name": "The Dual-Duty Slate Rule", "body": "Deep Slate (#0F172A) is both the light-mode ink and the dark-mode canvas — never introduce a separate near-black for dark backgrounds; Deep Slate already does that job.", "section": "colors" },
+      { "name": "The One Signal Rule", "body": "Fresh Savings Green is the only accent allowed to mean \"positive\" or \"primary action.\" Red and amber are reserved strictly for danger/warning, never decoration or a second CTA color.", "section": "colors" },
+      { "name": "The One Halo Rule", "body": "Only the scan tab's floating action button earns a colored glow/halo treatment. No other button, card, or badge gets this treatment — its rarity is what makes it read as \"the one thing to press.\"", "section": "elevation" }
+    ],
+    "dos": [
+      "Do treat Fresh Savings Green as the one accent per screen — the primary action or the one positive number, never decoration.",
+      "Do keep every primary button at 56px minimum height and full-width for confident, one-thumb reach.",
+      "Do use a tinted rounded icon badge (8–14% opacity) whenever a card needs a status/category signal, instead of a solid-color banner.",
+      "Do reserve the halo + color-matched shadow treatment for the scan tab's primary action only."
+    ],
+    "donts": [
+      "Don't introduce a second bold brand accent alongside Fresh Savings Green — Alert Red and Warm Amber exist strictly for danger/warning, never for decoration or a second CTA color.",
+      "Don't flatten the scan button's halo/shadow away in the name of consistency — it is the system's one intentional dramatic moment, not an inconsistency to fix.",
+      "Don't use sharp or square corners on any tappable control — buttons, chips, badges, and the FAB all commit to full or generous rounding.",
+      "Don't swap Deep Slate for a separate near-black when building dark-mode surfaces — it already is the dark-mode background by design."
+    ]
+  }
+}

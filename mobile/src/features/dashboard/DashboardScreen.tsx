@@ -98,15 +98,17 @@ export function DashboardScreen() {
 
       {dashboardQuery.isSuccess && (
         <>
-          <MonthStatsCard
-            currentMonth={dashboardQuery.data.current_month}
-            previousMonth={dashboardQuery.data.previous_month}
-          />
+          <YStack gap="$3">
+            <MonthStatsCard
+              currentMonth={dashboardQuery.data.current_month}
+              previousMonth={dashboardQuery.data.previous_month}
+            />
 
-          <BudgetCard
-            monthlyBudget={dashboardQuery.data.monthly_budget}
-            remainingBudget={dashboardQuery.data.remaining_budget}
-          />
+            <BudgetCard
+              monthlyBudget={dashboardQuery.data.monthly_budget}
+              remainingBudget={dashboardQuery.data.remaining_budget}
+            />
+          </YStack>
 
           <SpendTrendChart monthlyHistory={dashboardQuery.data.monthly_history} />
 

@@ -25873,6 +25873,9 @@
         "color": "#FFFFFF",
         "colorSecondary": "#64748B",
         "borderColor": "#1E293B",
+        "borderColorHover": "#1E293B",
+        "borderColorPress": "#1E293B",
+        "borderColorFocus": "#1E293B",
         "id": "dark"
       },
       "light": {
@@ -25890,6 +25893,9 @@
         "color": "#0F172A",
         "colorSecondary": "#64748B",
         "borderColor": "#F3F4F6",
+        "borderColorHover": "#F3F4F6",
+        "borderColorPress": "#F3F4F6",
+        "borderColorFocus": "#F3F4F6",
         "id": "light"
       }
     },

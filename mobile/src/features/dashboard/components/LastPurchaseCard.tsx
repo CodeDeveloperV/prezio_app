@@ -1,8 +1,9 @@
-import { Card, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
 
 import { DEFAULT_ICON_STROKE_WIDTH, IconHistory } from '../../../app/theme/icons';
 import { colorTokens } from '../../../app/theme/tokens';
 import { formatMoney } from '../utils/format';
+import { DashboardCard } from './DashboardCard';
 
 import type { LastPurchase } from '@prezio/shared-types';
 
@@ -17,15 +18,7 @@ function formatDateTime(iso: string): string {
 /** "Última compra": the most recently checked shopping-list item, price-snapshotted. */
 export function LastPurchaseCard({ lastPurchase }: LastPurchaseCardProps) {
   return (
-    <Card
-      elevation={2}
-      backgroundColor="$surface"
-      borderWidth={1}
-      borderColor="$borderColor"
-      borderRadius="$4"
-      padding="$5"
-      gap="$3"
-    >
+    <DashboardCard>
       <XStack alignItems="center" gap="$2">
         <IconHistory color={colorTokens.textSecondary} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
         <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
@@ -34,9 +27,12 @@ export function LastPurchaseCard({ lastPurchase }: LastPurchaseCardProps) {
       </XStack>
 
       {lastPurchase === null ? (
-        <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-          Todavía no marcaste ningún producto como comprado.
-        </Text>
+        <YStack alignItems="center" gap="$2" paddingVertical="$2">
+          <IconHistory color={colorTokens.textSecondary} size={28} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
+            Todavía no marcaste ningún producto como comprado.
+          </Text>
+        </YStack>
       ) : (
         <XStack justifyContent="space-between" alignItems="center">
           <YStack flex={1} gap="$0.5">
@@ -47,11 +43,11 @@ export function LastPurchaseCard({ lastPurchase }: LastPurchaseCardProps) {
               x{lastPurchase.quantity} · {formatDateTime(lastPurchase.checked_at)}
             </Text>
           </YStack>
-          <Text fontFamily="$heading" fontSize="$md" color="$primary">
+          <Text fontFamily="$heading" fontSize="$md" color="$primaryText">
             {formatMoney(lastPurchase.price_at_check)}
           </Text>
         </XStack>
       )}
-    </Card>
+    </DashboardCard>
   );
 }
