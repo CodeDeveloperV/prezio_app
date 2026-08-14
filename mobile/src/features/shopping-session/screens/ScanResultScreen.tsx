@@ -52,7 +52,7 @@ function formatPrice(price: string | number): string {
 }
 
 export function ScanResultScreen({ route, navigation }: Props) {
-  const { storeBranchId, barcodeId, product, storeProduct, fromCache = false } = route.params;
+  const { storeBranchId, barcodeId, product, storeProduct, fromCache = false, fromSearch = false } = route.params;
   const [addedToActiveList, setAddedToActiveList] = useState(false);
   const [createdNewPurchase, setCreatedNewPurchase] = useState(false);
 
@@ -92,8 +92,11 @@ export function ScanResultScreen({ route, navigation }: Props) {
   });
 
   const handleReportIncorrect = () => {
+    if (barcodeId == null) {
+      return;
+    }
     reportBarcodeMutation.mutate(barcodeId, {
-      onSuccess: () => navigation.replace('Scan', { storeBranchId }),
+      onSuccess: () => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId }),
     });
   };
 
@@ -171,7 +174,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
               <XStack alignItems="center" gap="$2" flexWrap="wrap" marginTop="$1">
                 <YStack backgroundColor="rgba(34, 197, 94, 0.10)" borderRadius="$full" paddingHorizontal="$3" paddingVertical="$1.5">
                   <Text fontFamily="$body" fontSize="$xs" color="$primary">
-                    Código validado
+                    {fromSearch ? 'Búsqueda manual' : 'Código validado'}
                   </Text>
                 </YStack>
                 {fromCache && (
@@ -332,14 +335,17 @@ export function ScanResultScreen({ route, navigation }: Props) {
               backgroundColor="$surface"
               icon={<IconFlag color={colorTokens.textPrimary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
               onPress={handleReportIncorrect}
-              disabled={fromCache}
+              disabled={fromCache || barcodeId == null}
             >
               Producto incorrecto
             </Button>
           </XStack>
         </Card>
 
-        <Button unstyled onPress={() => navigation.replace('Scan', { storeBranchId })}>
+        <Button
+          unstyled
+          onPress={() => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId })}
+        >
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
             Escanear otro producto
           </Text>

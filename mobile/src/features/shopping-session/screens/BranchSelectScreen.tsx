@@ -37,7 +37,7 @@ export function BranchSelectScreen({ navigation }: Props) {
   const storesQuery = useStoresQuery();
   const branchesQuery = useStoreBranchesQuery(selectedStore?.id);
   const stores = (storesQuery.data ?? []) as Store[];
-  const selectedStoreId = selectedStore ? (selectedStore as { id: number }).id : null;
+  const selectedStoreId = selectedStore?.id ?? null;
 
   return (
     <ScreenContainer>
@@ -102,8 +102,7 @@ export function BranchSelectScreen({ navigation }: Props) {
               </Card>
             )}
 
-            {stores.map((item: any) => {
-              const store = item as { id: number; name: string; country: string };
+            {stores.map((store) => {
               const isSelectedStore = selectedStoreId !== null && selectedStoreId === store.id;
               return (
                 <Button
@@ -155,21 +154,47 @@ export function BranchSelectScreen({ navigation }: Props) {
 
         {selectedStore && (
           <YStack gap="$3">
-            <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
-              <XStack alignItems="center" justifyContent="space-between" gap="$2">
+            <Button
+              elevation={1}
+              backgroundColor="$surface"
+              borderWidth={1}
+              borderColor="$borderColor"
+              borderRadius="$4"
+              padding="$4"
+              minHeight={88}
+              justifyContent="space-between"
+              alignItems="center"
+              onPress={() => setSelectedStore(null)}
+            >
+              <XStack alignItems="center" gap="$3" flex={1}>
+                <YStack
+                  width={42}
+                  height={42}
+                  borderRadius="$full"
+                  backgroundColor="rgba(34, 197, 94, 0.08)"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <IconBuildingStore
+                    color={colorTokens.primary}
+                    size={18}
+                    strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                  />
+                </YStack>
                 <YStack flex={1} gap="$0.5">
-                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
                     Tienda elegida
                   </Text>
-                  <Text fontFamily="$heading" fontSize="$md" color="$color">
+                  <Text fontFamily="$heading" fontSize="$md" color="$color" textAlign="left" numberOfLines={2}>
                     {selectedStore.name}
                   </Text>
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
+                    Tocá para cambiarla
+                  </Text>
                 </YStack>
-                <Button chromeless size="$2" onPress={() => setSelectedStore(null)}>
-                  Cambiar tienda
-                </Button>
               </XStack>
-            </Card>
+              <IconChevronRight color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            </Button>
 
             <YStack gap="$1">
               <Text fontFamily="$heading" fontSize="$md" color="$color">
@@ -199,8 +224,9 @@ export function BranchSelectScreen({ navigation }: Props) {
                 borderWidth={1}
                 borderColor="$borderColor"
                 borderRadius="$4"
-                padding="$4"
-                minHeight={68}
+                paddingHorizontal="$4"
+                paddingVertical="$4"
+                minHeight={80}
                 onPress={() => navigation.navigate('Scan', { storeBranchId: item.id })}
               >
                 <XStack alignItems="center" gap="$3" flex={1}>
@@ -218,11 +244,17 @@ export function BranchSelectScreen({ navigation }: Props) {
                       strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
                     />
                   </YStack>
-                  <YStack flex={1} gap="$0.5">
-                    <Text fontFamily="$heading" fontSize="$md" color="$color" textAlign="left">
+                  <YStack flex={1} gap="$0.25" flexShrink={1}>
+                    <Text
+                      fontFamily="$heading"
+                      fontSize="$md"
+                      color="$color"
+                      textAlign="left"
+                      numberOfLines={2}
+                    >
                       {item.name}
                     </Text>
-                    <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
+                    <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left" numberOfLines={2}>
                       {item.city}
                     </Text>
                   </YStack>

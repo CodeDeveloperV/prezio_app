@@ -137,8 +137,12 @@ function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarPro
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+            if (!event.defaultPrevented) {
+              if (route.name === primaryTabName) {
+                navigation.navigate('NewPurchase', { screen: 'Scan', params: {} });
+              } else if (!isFocused) {
+                navigation.navigate(route.name);
+              }
             }
           };
 

@@ -14,13 +14,17 @@ const Stack = createNativeStackNavigator<ShoppingSessionStackParamList>();
 
 export function ShoppingSessionStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator initialRouteName="Scan" screenOptions={{ headerShown: true }}>
+      <Stack.Screen
+        name="Scan"
+        component={ScanScreen}
+        options={{ title: 'Escanear', headerShown: false }}
+      />
       <Stack.Screen
         name="BranchSelect"
         component={BranchSelectScreen}
         options={{ title: 'Escanear', headerShown: false }}
       />
-      <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Escanear', headerShown: false }} />
       <Stack.Screen name="ScanResult" component={ScanResultScreen} options={{ title: 'Producto', headerShown: false }} />
       <Stack.Screen
         name="ScanDisambiguation"

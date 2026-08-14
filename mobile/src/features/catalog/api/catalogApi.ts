@@ -3,6 +3,7 @@ import { httpClient } from '../../../shared/services/api/httpClient';
 import type {
   AttachBarcodeRequest,
   Category,
+  CatalogSearchResult,
   CreateProductRequest,
   Product,
   ProductBarcode,
@@ -12,6 +13,17 @@ import type {
 
 export function listCategories(): Promise<Category[]> {
   return httpClient.get('catalog/categories').json<Category[]>();
+}
+
+export function searchCatalogProducts(query: string, storeBranchId?: number): Promise<CatalogSearchResult[]> {
+  return httpClient
+    .get('catalog/products/search', {
+      searchParams: {
+        q: query,
+        ...(storeBranchId !== undefined ? { store_branch_id: storeBranchId } : {}),
+      },
+    })
+    .json<CatalogSearchResult[]>();
 }
 
 export function scanBarcode(request: ScanBarcodeRequest): Promise<ScanResult> {

@@ -130,7 +130,7 @@ const AuthField = forwardRef<
         fontFamily="$body"
         fontSize="$md"
         color="$color"
-        placeholderTextColor={colorTokens.textSecondary}
+        placeholderTextColor="$colorSecondary"
         {...inputProps}
       />
       {trailing ? (

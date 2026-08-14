@@ -10,6 +10,7 @@ export interface User {
   id: number;
   email: string;
   is_active: boolean;
+  created_at: ISODateTime;
 }
 
 export interface UserProfile {
@@ -197,6 +198,11 @@ export interface ScanFoundResult {
   store_product: StoreProductRead | null;
 }
 
+export interface CatalogSearchResult {
+  product: ScanProductDetails;
+  store_product: StoreProductRead | null;
+}
+
 export interface ProductMatchCandidate {
   product: Product;
   score: number;
@@ -212,7 +218,13 @@ export interface ScanNotFoundResult {
   status: 'not_found';
 }
 
-export type ScanResult = ScanFoundResult | ScanNeedsDisambiguationResult | ScanNotFoundResult;
+export interface ScanConflictResult {
+  status: 'conflict';
+  candidates: Product[];
+  warnings: string[];
+}
+
+export type ScanResult = ScanFoundResult | ScanNeedsDisambiguationResult | ScanNotFoundResult | ScanConflictResult;
 
 // Attaches an already-scanned barcode to an existing Product the user picked from the
 // disambiguation list -- never creates or mutates a Product.
