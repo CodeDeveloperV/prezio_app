@@ -83,7 +83,6 @@ class ProductRepository(BaseRepository[Product]):
 
         stmt = (
             select(Product)
-            .outerjoin(Brand, Brand.id == Product.brand_id)
             .where(Product.status != ModerationStatus.MERGED)
             .where(
                 or_(
