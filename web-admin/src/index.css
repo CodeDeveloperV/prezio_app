@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+
+@theme {
+  --color-primary: #22c55e;
+  --color-primary-press: #16a34a;
+  --color-primary-text: #166534;
+  --color-ink: #0f172a;
+  --color-ink-secondary: #64748b;
+  --color-surface: #f3f4f6;
+  --color-border: #e2e8f0;
+  --font-sans: 'Poppins', sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
