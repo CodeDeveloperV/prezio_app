@@ -1,16 +1,22 @@
 from fastapi import Depends, HTTPException, Request, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.core.redis import get_redis
 from app.features.auth.dependencies import get_current_user
 from app.features.catalog.repository import CategoryRepository, ProductRepository
 from app.features.catalog.service import CatalogService
 from app.features.organizations.catalog_service import B2BCatalogService
 from app.features.organizations.enums import OrganizationRole
 from app.features.organizations.models import OrganizationMember
+from app.features.organizations.pricing_service import B2BPricingService
 from app.features.organizations.repository import OrganizationMemberBranchRepository, OrganizationMemberRepository
 from app.features.organizations.service import OrganizationMembershipService
-from app.features.pricing.repository import StoreProductRepository
+from app.features.pricing.repository import PriceConfirmationRepository, PriceHistoryRepository, StoreProductRepository
+from app.features.pricing.service import PricingService
+from app.features.reputation.repository import ReputationEventRepository
+from app.features.reputation.service import ReputationService
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
 from app.features.users.models import User
 from app.features.users.repository import UserRepository
@@ -36,6 +42,29 @@ def get_b2b_catalog_service(
         CatalogService(CategoryRepository(db), ProductRepository(db)),
         membership,
         StoreProductRepository(db),
+    )
+
+
+def get_b2b_pricing_service(
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    membership: OrganizationMembershipService = Depends(get_membership_service),
+) -> B2BPricingService:
+    return B2BPricingService(
+        db,
+        PricingService(
+            db,
+            StoreProductRepository(db),
+            PriceHistoryRepository(db),
+            PriceConfirmationRepository(db),
+            redis,
+            ReputationService(ReputationEventRepository(db)),
+        ),
+        membership,
+        StoreProductRepository(db),
+        PriceHistoryRepository(db),
+        ProductRepository(db),
+        CatalogService(CategoryRepository(db), ProductRepository(db)),
     )
 
 

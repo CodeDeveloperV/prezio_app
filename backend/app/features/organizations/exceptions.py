@@ -39,3 +39,13 @@ class BranchAccessDenied(Exception):
     which is for a branch that isn't part of the organization at all)."""
 
     pass
+
+
+class ListingNotActive(Exception):
+    """Raised when the B2B portal's Pricing screen (Fase 10.6) is asked to update the
+    price/availability of a StoreProduct whose listing_status is INACTIVE. Reactivating a
+    listing is a Fase 10.5 concern (Catálogo -> "Agregar a sucursal"), not a pricing one."""
+
+    def __init__(self, store_product_id: int) -> None:
+        self.store_product_id = store_product_id
+        super().__init__(f"Store product {store_product_id} is not an active listing")

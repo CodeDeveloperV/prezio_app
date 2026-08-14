@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.organizations.enums import OrganizationMemberStatus, OrganizationRole
 from app.features.organizations.exceptions import (
+    BranchAccessDenied,
     BranchNotFound,
     InvalidBranchForOrganization,
     LastOrganizationAdminError,
@@ -50,6 +51,18 @@ class OrganizationMembershipService:
         if member.role == OrganizationRole.ORGANIZATION_ADMIN:
             return True
         return await self.member_branches.has_access(member.id, store_branch_id)
+
+    async def authorize_branch(self, store_id: int, member: OrganizationMember, branch_id: int) -> StoreBranch:
+        """Shared B2B authorization check (used by catalog listing management and pricing):
+        a branch must belong to this organization at all (else `InvalidBranchForOrganization`)
+        *and*, for non-admins, be one this member was explicitly granted access to (else
+        `BranchAccessDenied`). Returns the branch so callers that need it skip a re-fetch."""
+        branch = await self.store_branches.get_by_id(branch_id)
+        if branch is None or branch.store_id != store_id:
+            raise InvalidBranchForOrganization(branch_id)
+        if not await self.has_branch_access(member, branch_id):
+            raise BranchAccessDenied(branch_id)
+        return branch
 
     async def list_my_memberships(self, user_id: int) -> list[MyMembershipRead]:
         memberships = await self.members.list_by_user(user_id)

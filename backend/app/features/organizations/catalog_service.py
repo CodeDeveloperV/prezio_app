@@ -11,8 +11,6 @@ from app.features.organizations.catalog_schemas import (
     OrgListingStatus,
     UpdateListingStatusRequest,
 )
-from app.features.organizations.enums import OrganizationRole
-from app.features.organizations.exceptions import BranchAccessDenied, InvalidBranchForOrganization
 from app.features.organizations.models import OrganizationMember
 from app.features.organizations.service import OrganizationMembershipService
 from app.features.pricing.enums import StoreProductStatus
@@ -135,17 +133,9 @@ class B2BCatalogService:
         return self._to_branch_listing(branch, listing)
 
     async def _authorize_branch(self, store_id: int, member: OrganizationMember, branch_id: int) -> None:
-        """A branch must belong to this organization at all (else 400) *and*, for non-admins,
-        be one this member was explicitly granted access to (else 403). Done per-branch here
-        rather than via `require_branch_access` since callers pass multiple branch_ids in a
-        request body, not a single path param."""
-        branch = await self.membership.store_branches.get_by_id(branch_id)
-        if branch is None or branch.store_id != store_id:
-            raise InvalidBranchForOrganization(branch_id)
-        if member.role != OrganizationRole.ORGANIZATION_ADMIN and not await self.membership.has_branch_access(
-            member, branch_id
-        ):
-            raise BranchAccessDenied(branch_id)
+        """Done per-branch here rather than via `require_branch_access` since callers pass
+        multiple branch_ids in a request body, not a single path param."""
+        await self.membership.authorize_branch(store_id, member, branch_id)
 
     async def _branch_listings(
         self, store_id: int, member: OrganizationMember, product_id: int

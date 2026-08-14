@@ -71,6 +71,19 @@ class ProductRepository(BaseRepository[Product]):
         result = await self.session.execute(select(Product).where(Product.id.in_(product_ids)))
         return list(result.scalars().all())
 
+    async def list_by_ids_with_relations(self, product_ids: list[int]) -> list[Product]:
+        """Bulk counterpart to `get_with_relations` -- eager-loads `.brand`/`.category`/
+        `.barcodes` for every id in one round trip, for screens that render several products
+        at once (e.g. the B2B pricing list)."""
+        if not product_ids:
+            return []
+        result = await self.session.execute(
+            select(Product)
+            .where(Product.id.in_(product_ids))
+            .options(selectinload(Product.brand), selectinload(Product.category), selectinload(Product.barcodes))
+        )
+        return list(result.scalars().all())
+
     async def get_with_relations(self, product_id: int) -> Product | None:
         """Eager-loads `.brand`/`.category`/`.barcodes` -- callers that render a display name
         or a representative barcode for the product need them without a separate lazy-load

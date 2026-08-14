@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.features.pricing.enums import Availability, StoreProductStatus
+from app.features.pricing.enums import Availability, PriceUpdateSource, StoreProductStatus
 from app.shared.models_base import Base
 
 
@@ -43,6 +43,9 @@ class PriceHistory(Base):
     previous_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     new_price: Mapped[float] = mapped_column(Numeric(10, 2))
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    source: Mapped[PriceUpdateSource] = mapped_column(
+        Enum(PriceUpdateSource, native_enum=False), default=PriceUpdateSource.COMMUNITY
+    )
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     store_product: Mapped["StoreProduct"] = relationship(back_populates="price_history")

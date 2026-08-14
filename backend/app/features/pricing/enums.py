@@ -15,3 +15,12 @@ class StoreProductStatus(str, enum.Enum):
 
     ACTIVE = "active"
     INACTIVE = "inactive"
+
+
+class PriceUpdateSource(str, enum.Enum):
+    """Who originated a `PriceHistory` entry -- lets the UI distinguish "reportado por la
+    comunidad" (mobile/crowdsourced) from "confirmado por el supermercado" (B2B portal)."""
+
+    COMMUNITY = "community"
+    MERCHANT = "merchant"
+    SYSTEM = "system"
