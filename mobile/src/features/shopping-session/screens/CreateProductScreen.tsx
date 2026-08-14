@@ -76,7 +76,7 @@ export function CreateProductScreen({ route, navigation }: Props) {
         barcode_type: barcodeType,
       },
       {
-        onSuccess: () => navigation.replace('Scan', { storeBranchId }),
+        onSuccess: () => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId }),
       },
     );
   };

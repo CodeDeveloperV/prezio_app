@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
@@ -15,6 +16,7 @@ import { colorTokens } from '../../../app/theme/tokens';
 import { useStoreBranchesQuery, useStoresQuery } from '../../stores/hooks/useStores';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 import { FlowHeader } from '../components/FlowHeader';
+import { addShoppingListItem, createShoppingList, setShoppingListActiveBranch } from '../../shopping-lists/api/shoppingListsApi';
 
 import type { Store, StoreBranch } from '@prezio/shared-types';
 
@@ -31,19 +33,45 @@ function StepChip({ children }: { children: string }) {
 }
 
 /** First step of the scan flow: pick a store, then a branch, before the camera opens --
- * every scan needs a store_branch_id to look up the right StoreProduct/price. */
-export function BranchSelectScreen({ navigation }: Props) {
+ * quick scan can skip this, but the contextual/new-purchase flow still uses it. */
+export function BranchSelectScreen({ route, navigation }: Props) {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const storesQuery = useStoresQuery();
   const branchesQuery = useStoreBranchesQuery(selectedStore?.id);
+  const queryClient = useQueryClient();
   const stores = (storesQuery.data ?? []) as Store[];
   const selectedStoreId = selectedStore?.id ?? null;
+  const pendingScan = route.params?.pendingScan;
+
+  const handleStartPurchase = async () => {
+    const branchId = selectedBranchId;
+    if (!pendingScan) {
+      navigation.replace('Scan', branchId == null ? undefined : { storeBranchId: branchId });
+      return;
+    }
+
+    const shoppingList = await createShoppingList({ name: 'Compra de hoy' });
+    if (branchId != null) {
+      await setShoppingListActiveBranch(shoppingList.id, { store_branch_id: branchId });
+    }
+    await addShoppingListItem(shoppingList.id, {
+      product_id: pendingScan.product.id,
+      quantity: 1,
+    });
+    queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+    navigation.replace('Scan', branchId == null ? undefined : { storeBranchId: branchId });
+  };
 
   return (
     <ScreenContainer>
       <FlowHeader
-        title="Escanear producto"
-        subtitle="Elegí tienda y sucursal para abrir la cámara con el contexto correcto."
+        title="Nueva compra"
+        subtitle={
+          pendingScan
+            ? 'Elegí tienda y sucursal para arrancar la compra con el producto ya leído.'
+            : 'Elegí supermercado y sucursal antes de empezar a escanear.'
+        }
         onBack={() => navigation.goBack()}
       />
 
@@ -63,10 +91,10 @@ export function BranchSelectScreen({ navigation }: Props) {
 
             <YStack flex={1} gap="$2">
               <Text fontFamily="$heading" fontSize="$xl" color="$color">
-                Escaneá un producto
+                ¿En qué súper vas a comprar hoy?
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Vamos a validar el precio en la sucursal correcta antes de mostrarte el resultado.
+                Podés elegirlo ahora o saltarlo y definirlo después.
               </Text>
             </YStack>
           </XStack>
@@ -222,12 +250,14 @@ export function BranchSelectScreen({ navigation }: Props) {
                 alignItems="center"
                 backgroundColor="$surface"
                 borderWidth={1}
-                borderColor="$borderColor"
+                borderColor={selectedBranchId === item.id ? '$primary' : '$borderColor'}
                 borderRadius="$4"
                 paddingHorizontal="$4"
                 paddingVertical="$4"
                 minHeight={80}
-                onPress={() => navigation.navigate('Scan', { storeBranchId: item.id })}
+                onPress={() => {
+                  setSelectedBranchId(item.id);
+                }}
               >
                 <XStack alignItems="center" gap="$3" flex={1}>
                   <YStack
@@ -269,13 +299,23 @@ export function BranchSelectScreen({ navigation }: Props) {
           </YStack>
         )}
 
-        <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
+        <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
           <Text fontFamily="$heading" fontSize="$sm" color="$color">
-            Escanear con contexto correcto
+            Empezar compra
           </Text>
-          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-            La sucursal seleccionada define el precio que vas a ver después del escaneo.
+          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+            La sucursal elegida define el contexto del escaneo. Si no elegís una, la podrás definir después.
           </Text>
+
+          <Button backgroundColor="$primary" color="$white" onPress={() => handleStartPurchase().catch(() => undefined)}>
+            {pendingScan ? 'Iniciar compra' : 'Escanear producto'}
+          </Button>
+
+          <Button unstyled onPress={() => navigation.replace('Scan')}>
+            <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">
+              Omitir, elegir después
+            </Text>
+          </Button>
         </Card>
       </YStack>
     </ScreenContainer>

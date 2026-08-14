@@ -139,6 +139,24 @@ class ProductBarcodeRepository(BaseRepository[ProductBarcode]):
         )
         return list(result.scalars().all())
 
+    async def find_matches_for_lookup_any_store(self, barcode: str) -> list[ProductBarcode]:
+        """Barcode lookup without store context.
+
+        This powers the quick-scan flow: we want the canonical product behind the barcode,
+        even if the user has not chosen a branch yet. Rejected rows are still skipped so a
+        barcode previously flagged as incorrect can fall back to manual resolution instead of
+        getting stuck on the wrong product forever.
+        """
+        result = await self.session.execute(
+            select(ProductBarcode)
+            .where(
+                ProductBarcode.barcode == barcode,
+                ProductBarcode.status != ModerationStatus.REJECTED,
+            )
+            .order_by(ProductBarcode.store_id.is_(None).desc(), ProductBarcode.id.asc())
+        )
+        return list(result.scalars().all())
+
     async def list_by_status(self, status: ModerationStatus) -> list[ProductBarcode]:
         result = await self.session.execute(select(ProductBarcode).where(ProductBarcode.status == status))
         return list(result.scalars().all())
