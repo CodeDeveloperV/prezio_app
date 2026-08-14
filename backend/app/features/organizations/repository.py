@@ -9,6 +9,15 @@ from app.shared.base_repository import BaseRepository
 class OrganizationMemberRepository(BaseRepository[OrganizationMember]):
     model = OrganizationMember
 
+    async def get_by_id(self, entity_id: int) -> OrganizationMember | None:
+        result = await self.session.execute(
+            select(OrganizationMember)
+            .where(OrganizationMember.id == entity_id)
+            .options(selectinload(OrganizationMember.branch_access))
+            .execution_options(populate_existing=True)
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_store_and_user(self, store_id: int, user_id: int) -> OrganizationMember | None:
         result = await self.session.execute(
             select(OrganizationMember)

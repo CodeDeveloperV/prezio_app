@@ -19,16 +19,11 @@ import type { MouseEvent } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useLogout } from '@/features/auth/hooks/useLogout';
+import { ROLE_LABELS } from '@/features/organizations/constants';
 import { useActiveMembership, useAuthStore } from '@/shared/store/authStore';
 import { navItems } from './navConfig';
 
 const DRAWER_WIDTH = 260;
-
-const ROLE_LABELS: Record<string, string> = {
-  organization_admin: 'Administrador',
-  manager: 'Gerente',
-  employee: 'Empleado',
-};
 
 function OrganizationSwitcher() {
   const allMemberships = useAuthStore((state) => state.memberships);

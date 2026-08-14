@@ -149,6 +149,26 @@ async def test_invite_with_branch_from_another_organization_is_rejected(async_cl
     assert response.status_code == 400
 
 
+async def test_admin_updates_member_role_status_and_branches(async_client: AsyncClient) -> None:
+    store_id, branch_id = await seed_store(async_client)
+    admin_id, admin_token = await register_and_login(async_client, "admin@example.com")
+    await add_membership(async_client, store_id, admin_id, "organization_admin")
+    employee_id, _ = await register_and_login(async_client, "employee@example.com")
+    member_id = await add_membership(async_client, store_id, employee_id, "employee")
+
+    response = await async_client.patch(
+        f"/b2b/organizations/{store_id}/members/{member_id}",
+        json={"role": "manager", "status": "active", "branch_ids": [branch_id]},
+        headers=auth(admin_token),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["role"] == "manager"
+    assert body["status"] == "active"
+    assert body["branch_ids"] == [branch_id]
+
+
 async def test_cannot_demote_or_deactivate_last_admin(async_client: AsyncClient) -> None:
     store_id, _ = await seed_store(async_client)
     admin_id, admin_token = await register_and_login(async_client, "admin@example.com")
