@@ -2,6 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type {
   BarcodeType,
   ProductMatchCandidate,
+  ScanPriceOffer,
   ScanProductDetails,
   ShoppingListComparisonResult,
   StoreProductRead,
@@ -33,33 +34,38 @@ export type ComparisonStackParamList = {
 // a branch context, then resolve a barcode to an existing product or fall through to
 // disambiguation/creation.
 export type ShoppingSessionStackParamList = {
-  BranchSelect: undefined;
+  BranchSelect: { pendingScan?: ScanResultProductContext } | undefined;
   Scan: { storeBranchId?: number } | undefined;
-  ScanResult: {
+  ScanResult: ScanResultProductContext & {
     storeBranchId?: number | null;
-    barcodeId?: number | null;
-    product: ScanProductDetails;
-    storeProduct: StoreProductRead | null;
-    fromSearch?: boolean;
-    // True when this result came from the offline cache (Epic 14) instead of a live lookup --
-    // gates the online-only actions (confirm match, price update, report, alerts) and shows the
-    // price as a snapshot rather than a guaranteed-current value.
-    fromCache?: boolean;
+    priceOffers?: ScanPriceOffer[];
   };
   ScanDisambiguation: {
-    storeBranchId: number;
+    storeBranchId?: number | null;
     barcode: string;
     barcodeType: BarcodeType;
     candidates: ProductMatchCandidate[];
   };
   CreateProduct: {
-    storeBranchId: number;
+    storeBranchId?: number | null;
     barcode: string;
     barcodeType: BarcodeType;
   };
   PriceHistory: { storeProductId: number };
   PriceUpdate: { storeProductId: number; currentPrice: string; version: number };
   CreateAlert: { productId: number; productName: string; storeBranchId?: number | null };
+};
+
+export type ScanResultProductContext = {
+  barcodeId?: number | null;
+  product: ScanProductDetails;
+  storeProduct: StoreProductRead | null;
+  priceOffers?: ScanPriceOffer[];
+  fromSearch?: boolean;
+  // True when this result came from the offline cache (Epic 14) instead of a live lookup --
+  // gates the online-only actions (confirm match, price update, report, alerts) and shows the
+  // price as a snapshot rather than a guaranteed-current value.
+  fromCache?: boolean;
 };
 
 // Nested stack rendered inside the "Profile" tab: the profile screen itself plus the

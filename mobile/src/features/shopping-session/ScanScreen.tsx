@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Image, StyleSheet } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { HTTPError } from 'ky';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useBarcodeScannerOutput } from 'react-native-vision-camera-barcode-scanner';
@@ -10,61 +10,244 @@ import { Button, Card, Input, Text, XStack, YStack } from 'tamagui';
 
 import {
   DEFAULT_ICON_STROKE_WIDTH,
-  SUBTLE_ICON_STROKE_WIDTH,
   IconAlertTriangle,
   IconBarcode,
+  IconHistory,
   IconScan,
 } from '../../app/theme/icons';
 import { colorTokens } from '../../app/theme/tokens';
 import { searchCatalogProducts } from '../catalog/api/catalogApi';
 import { useScanBarcodeMutation } from '../catalog/hooks/useCatalogMutations';
 import { cacheScanResult, findCachedBarcode } from '../../shared/services/db/catalogCache';
+import type { ProductMatchCandidate, ScanPriceOffer, ScanProductDetails, StoreProductRead } from '@prezio/shared-types';
 import type { ShoppingSessionStackParamList } from '../../app/navigation/types';
 import { FlowHeader } from './components/FlowHeader';
-import { selectActiveShoppingList } from '../shopping-lists/utils/selectActiveShoppingList';
-import { useShoppingListsQuery } from '../shopping-lists/hooks/useShoppingLists';
+import { showScanErrorToast } from './scanToast';
 
 type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'Scan'>;
+
+type ScanMode = 'scan' | 'history' | 'manual';
+
+type RecentScanEntry = {
+  id: string;
+  scannedAt: string;
+  source: 'barcode' | 'manual' | 'cached';
+  barcodeId: number | null;
+  storeBranchId: number | null;
+  barcode: string | null;
+  product: ScanProductDetails;
+  storeProduct: StoreProductRead | null;
+  priceOffers: ScanPriceOffer[];
+};
+
+const RECENT_SCANS_KEY = ['shopping-session', 'recent-scans'] as const;
 
 const styles = StyleSheet.create({
   cameraCard: {
     overflow: 'hidden',
   },
+  cameraSurface: {
+    minHeight: 360,
+  },
   frameCorner: {
     position: 'absolute',
     width: 36,
     height: 36,
-    borderColor: 'rgba(255,255,255,0.95)',
+    borderColor: 'rgba(255,255,255,0.94)',
   },
   frameTopLeft: {
-    top: 20,
-    left: 20,
+    top: 22,
+    left: 22,
     borderTopWidth: 3,
     borderLeftWidth: 3,
     borderTopLeftRadius: 20,
   },
   frameTopRight: {
-    top: 20,
-    right: 20,
+    top: 22,
+    right: 22,
     borderTopWidth: 3,
     borderRightWidth: 3,
     borderTopRightRadius: 20,
   },
   frameBottomLeft: {
-    bottom: 20,
-    left: 20,
+    bottom: 22,
+    left: 22,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
     borderBottomLeftRadius: 20,
   },
   frameBottomRight: {
-    bottom: 20,
-    right: 20,
+    bottom: 22,
+    right: 22,
     borderBottomWidth: 3,
     borderRightWidth: 3,
     borderBottomRightRadius: 20,
   },
+  thumbnail: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+  },
+  scrollBody: {
+    flex: 1,
+  },
+  scrollBodyContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 16,
+  },
 });
+
+const recentScanPressStyle = { opacity: 0.92 };
+
+function formatPrice(price: string | number | null | undefined): string {
+  if (price == null) {
+    return '--';
+  }
+  const numeric = Number(price);
+  if (Number.isNaN(numeric)) {
+    return String(price);
+  }
+  return numeric.toLocaleString('es-PA', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleString('es-PA', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function sourceLabel(source: RecentScanEntry['source']): string {
+  switch (source) {
+    case 'manual':
+      return 'Búsqueda manual';
+    case 'cached':
+      return 'Sin conexión';
+    default:
+      return 'Escaneo rápido';
+  }
+}
+
+function TintedIconBadge({
+  icon,
+  size = 48,
+  backgroundColor,
+}: {
+  icon: ReactNode;
+  size?: number;
+  backgroundColor: string;
+}) {
+  return (
+    <YStack
+      width={size}
+      height={size}
+      borderRadius="$full"
+      backgroundColor={backgroundColor}
+      alignItems="center"
+      justifyContent="center"
+    >
+      {icon}
+    </YStack>
+  );
+}
+
+function ScanModeButton({
+  active,
+  label,
+  icon,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  icon?: ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Button
+      flex={1}
+      backgroundColor={active ? '$primary' : '$surface'}
+      color={active ? '$white' : '$color'}
+      borderWidth={1}
+      borderColor={active ? '$primary' : '$borderColor'}
+      borderRadius="$full"
+      minHeight={46}
+      paddingHorizontal="$3"
+      onPress={onPress}
+    >
+      <XStack alignItems="center" gap="$2">
+        {icon}
+        <Text fontFamily="$body" fontSize="$sm" color={active ? '$white' : '$color'}>
+          {label}
+        </Text>
+      </XStack>
+    </Button>
+  );
+}
+
+function RecentScanCard({
+  entry,
+  onPress,
+}: {
+  entry: RecentScanEntry;
+  onPress: () => void;
+}) {
+  const heroPrice = entry.storeProduct?.current_price ?? entry.priceOffers[0]?.current_price ?? null;
+  const heroStore = entry.storeProduct
+    ? entry.priceOffers.find((offer) => offer.store_product_id === entry.storeProduct?.id)
+    : entry.priceOffers[0] ?? null;
+
+  return (
+    <Card
+      elevation={2}
+      backgroundColor="$surface"
+      borderRadius="$4"
+      padding="$4"
+      gap="$3"
+      onPress={onPress}
+      pressStyle={recentScanPressStyle}
+    >
+      <XStack alignItems="center" gap="$3">
+        {entry.product.image_url ? (
+          <Image source={{ uri: entry.product.image_url }} style={styles.thumbnail} resizeMode="contain" />
+        ) : (
+          <TintedIconBadge
+            size={52}
+            backgroundColor="rgba(34, 197, 94, 0.08)"
+            icon={<IconBarcode color={colorTokens.primary} size={22} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          />
+        )}
+
+        <YStack flex={1} gap="$0.5">
+          <Text fontFamily="$heading" fontSize="$sm" color="$color" numberOfLines={2}>
+            {entry.product.canonical_name}
+          </Text>
+          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" numberOfLines={1}>
+            {sourceLabel(entry.source)}
+            {entry.storeBranchId != null ? ` · sucursal ${entry.storeBranchId}` : ''}
+          </Text>
+          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+            {formatShortDate(entry.scannedAt)}
+          </Text>
+        </YStack>
+
+        <YStack alignItems="flex-end">
+          <Text fontFamily="$heading" fontSize="$sm" color="$color">
+            ${formatPrice(heroPrice)}
+          </Text>
+          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+            {heroStore ? heroStore.store_name : 'Sin precio'}
+          </Text>
+        </YStack>
+      </XStack>
+    </Card>
+  );
+}
 
 /**
  * Live barcode scanning now comes from `react-native-vision-camera-barcode-scanner`, which
@@ -72,25 +255,14 @@ const styles = StyleSheet.create({
  * remains as a fallback for text search and for cases where the scan needs more context.
  */
 export function ScanScreen({ route, navigation }: Props) {
-  const shoppingListsQuery = useShoppingListsQuery();
-  const activeShoppingList = selectActiveShoppingList(shoppingListsQuery.data);
-  const defaultStoreBranchId = activeShoppingList?.active_store_branch_id
-    ? Number(activeShoppingList.active_store_branch_id)
-    : undefined;
   const routeStoreBranchId = route.params?.storeBranchId;
-  const storeBranchId =
-    typeof routeStoreBranchId === 'number' && Number.isFinite(routeStoreBranchId)
-      ? routeStoreBranchId
-      : defaultStoreBranchId !== undefined && Number.isFinite(defaultStoreBranchId)
-        ? defaultStoreBranchId
-        : undefined;
-  const storeBranchLabel = storeBranchId !== undefined ? `Sucursal ${storeBranchId}` : 'Elegí una sucursal';
-  const hasStoreBranch = storeBranchId !== undefined;
   const isFocused = useIsFocused();
+  const queryClient = useQueryClient();
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
   const scanMutation = useScanBarcodeMutation();
   const hasSubmittedRef = useRef(false);
+  const [mode, setMode] = useState<ScanMode>('scan');
   const [searchText, setSearchText] = useState('');
   const [debouncedSearchText, setDebouncedSearchText] = useState('');
   const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
@@ -111,10 +283,63 @@ export function ScanScreen({ route, navigation }: Props) {
     };
   }, [searchText]);
 
+  const recentScansQuery = useQuery({
+    queryKey: RECENT_SCANS_KEY,
+    queryFn: async () => queryClient.getQueryData<RecentScanEntry[]>(RECENT_SCANS_KEY) ?? [],
+    initialData: queryClient.getQueryData<RecentScanEntry[]>(RECENT_SCANS_KEY) ?? [],
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const recentScans = recentScansQuery.data ?? [];
+  const latestScan = recentScans[0] ?? null;
+
+  const pushRecentScan = useCallback(
+    (entry: RecentScanEntry) => {
+      queryClient.setQueryData<RecentScanEntry[]>(RECENT_SCANS_KEY, (current = []) => [entry, ...current].slice(0, 6));
+    },
+    [queryClient],
+  );
+
+  const openScanResult = useCallback(
+    (
+      payload: Omit<RecentScanEntry, 'id' | 'scannedAt' | 'barcode' | 'source'> & {
+        barcodeId: number | null;
+        storeBranchId: number | null;
+        source: RecentScanEntry['source'];
+        barcode?: string | null;
+        fromSearch?: boolean;
+        fromCache?: boolean;
+      },
+    ) => {
+      const entry: RecentScanEntry = {
+        id: `${Date.now()}-${payload.product.id}-${payload.source}`,
+        scannedAt: new Date().toISOString(),
+        source: payload.source,
+        barcodeId: payload.barcodeId,
+        storeBranchId: payload.storeBranchId,
+        barcode: payload.barcode ?? null,
+        product: payload.product,
+        storeProduct: payload.storeProduct,
+        priceOffers: payload.priceOffers,
+      };
+      pushRecentScan(entry);
+      navigation.navigate('ScanResult', {
+        storeBranchId: payload.storeBranchId,
+        barcodeId: payload.barcodeId,
+        product: payload.product,
+        storeProduct: payload.storeProduct,
+        fromSearch: payload.fromSearch,
+        fromCache: payload.fromCache,
+        priceOffers: payload.priceOffers,
+      });
+    },
+    [navigation, pushRecentScan],
+  );
+
   const productSearchQuery = useQuery({
-    queryKey: ['catalogProductsSearch', debouncedSearchText, storeBranchId],
-    queryFn: () => searchCatalogProducts(debouncedSearchText, storeBranchId),
-    enabled: debouncedSearchText.length >= 5,
+    queryKey: ['catalogProductsSearch', debouncedSearchText, routeStoreBranchId ?? null],
+    queryFn: () => searchCatalogProducts(debouncedSearchText, routeStoreBranchId ?? undefined),
+    enabled: debouncedSearchText.length >= 5 && mode === 'manual',
     staleTime: 60_000,
   });
 
@@ -123,45 +348,83 @@ export function ScanScreen({ route, navigation }: Props) {
       if (!value || hasSubmittedRef.current) {
         return;
       }
-      if (storeBranchId === undefined) {
-        setOfflineNotice('Elegí una sucursal antes de escanear.');
-        return;
-      }
 
       hasSubmittedRef.current = true;
       setOfflineNotice(null);
 
       try {
-        const result = await scanMutation.mutateAsync({ barcode: value, store_branch_id: storeBranchId });
+        const result = await scanMutation.mutateAsync({
+          barcode: value,
+          ...(routeStoreBranchId !== undefined ? { store_branch_id: routeStoreBranchId } : {}),
+        });
+
         if (result.status === 'found') {
           cacheScanResult(result, value, 'other').catch(() => undefined);
-          navigation.replace('ScanResult', {
-            storeBranchId,
+          openScanResult({
             barcodeId: result.barcode_id,
+            storeBranchId: routeStoreBranchId ?? null,
             product: result.product,
             storeProduct: result.store_product,
+            priceOffers: result.price_offers,
+            source: 'barcode',
+            barcode: value,
           });
         } else if (result.status === 'needs_disambiguation') {
           navigation.replace('ScanDisambiguation', {
-            storeBranchId,
+            storeBranchId: routeStoreBranchId ?? undefined,
             barcode: value,
             barcodeType: 'other',
             candidates: result.candidates,
           });
+        } else if (result.status === 'conflict') {
+          navigation.replace('ScanDisambiguation', {
+            storeBranchId: routeStoreBranchId ?? undefined,
+            barcode: value,
+            barcodeType: 'other',
+            candidates: result.candidates.map((candidate) => ({
+              product: candidate,
+              score: 0,
+              matched_on: ['conflict'],
+            })) as ProductMatchCandidate[],
+          });
         } else {
-          navigation.replace('CreateProduct', { storeBranchId, barcode: value, barcodeType: 'other' });
+          navigation.replace('CreateProduct', {
+            storeBranchId: routeStoreBranchId ?? undefined,
+            barcode: value,
+            barcodeType: 'other',
+          });
         }
       } catch (error) {
-        // A non-HTTP error here means the request never reached the backend (no connection) --
-        // fall back to whatever this barcode already has cached locally instead of blocking the
-        // scan entirely. An HTTP error (e.g. 4xx) means we're online and the backend rejected the
-        // request, so it isn't retried against the cache.
-        if (!(error instanceof HTTPError)) {
-          const cached = await findCachedBarcode(value, storeBranchId);
+        if (error instanceof HTTPError) {
+          let message = 'No pudimos validar este código. Intentá de nuevo en unos segundos.';
+
+          try {
+            const payload = (await error.response.clone().json()) as {
+              detail?: Array<{ loc?: Array<string | number>; msg?: string }> | string;
+            };
+
+            if (typeof payload.detail === 'string') {
+              message = payload.detail;
+            } else if (Array.isArray(payload.detail) && payload.detail.length > 0) {
+              const fieldError = payload.detail.find((item) =>
+                item.loc?.some((part) => part === 'store_branch_id'),
+              );
+              message = fieldError?.msg ?? payload.detail[0]?.msg ?? message;
+            }
+          } catch {
+            // Keep the default toast message when the error body cannot be parsed.
+          }
+
+          showScanErrorToast({
+            title: 'Error al escanear',
+            message,
+          });
+        } else {
+          const cached = routeStoreBranchId != null ? await findCachedBarcode(value, routeStoreBranchId) : null;
           if (cached) {
-            navigation.replace('ScanResult', {
-              storeBranchId,
+            openScanResult({
               barcodeId: cached.barcodeId,
+              storeBranchId: routeStoreBranchId ?? null,
               product: {
                 id: Number(cached.product.id),
                 canonical_name: cached.product.canonicalName,
@@ -185,27 +448,36 @@ export function ScanScreen({ route, navigation }: Props) {
                     last_verified_by: null,
                   }
                 : null,
+              priceOffers: [],
+              source: 'cached',
+              barcode: value,
               fromCache: true,
             });
-          } else {
-            setOfflineNotice('Sin conexión y este producto no está en tu caché. Conéctate para buscarlo.');
+            return;
           }
+
+          setOfflineNotice('Sin conexión y este producto no está en tu caché. Conéctate para buscarlo.');
         }
       } finally {
         hasSubmittedRef.current = false;
       }
     },
-    [navigation, scanMutation, storeBranchId],
+    [navigation, openScanResult, routeStoreBranchId, scanMutation],
   );
 
   const barcodeScannerOutput = useBarcodeScannerOutput({
     barcodeFormats: ['all-formats'],
     onBarcodeScanned: (barcodes) => {
-      const rawValue = barcodes[0]?.rawValue?.trim();
-      if (!rawValue) {
+      if (mode !== 'scan') {
         return;
       }
-      handleDetectedBarcode(rawValue).catch(() => undefined);
+
+      const firstBarcode = barcodes[0];
+      const barcodeValue = firstBarcode?.rawValue?.trim?.() ?? firstBarcode?.displayValue?.trim?.() ?? '';
+      if (!barcodeValue) {
+        return;
+      }
+      handleDetectedBarcode(barcodeValue).catch(() => undefined);
     },
     onError: () => {
       setOfflineNotice('No pudimos activar el lector automático. Usá la búsqueda manual.');
@@ -221,26 +493,204 @@ export function ScanScreen({ route, navigation }: Props) {
       setOfflineNotice('Escribí al menos 5 caracteres para buscar coincidencias.');
       return;
     }
+
     setOfflineNotice(null);
 
     if (/^\d{5,}$/.test(value)) {
-      if (storeBranchId === undefined) {
-        setOfflineNotice('Elegí una sucursal antes de escanear.');
-        return;
-      }
       handleDetectedBarcode(value).catch(() => undefined);
       return;
     }
 
     setDebouncedSearchText(value);
-  }, [handleDetectedBarcode, searchText, storeBranchId]);
+    setMode('manual');
+  }, [handleDetectedBarcode, searchText]);
+
+  const helperCard = useMemo(() => {
+    if (mode === 'history') {
+      return (
+        <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
+          <Text fontFamily="$heading" fontSize="$md" color="$color">
+            Historial de escaneo
+          </Text>
+          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+            Acá ves los últimos productos escaneados durante esta sesión.
+          </Text>
+        </Card>
+      );
+    }
+
+    if (mode === 'manual') {
+      return (
+        <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
+          <Text fontFamily="$heading" fontSize="$md" color="$color">
+            Búsqueda manual
+          </Text>
+          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+            Buscá por nombre, marca, presentación o código. Requiere al menos 5 caracteres.
+          </Text>
+        </Card>
+      );
+    }
+
+    return (
+      <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
+        <XStack alignItems="center" gap="$3">
+          <YStack
+            width={48}
+            height={48}
+            borderRadius="$full"
+            backgroundColor="rgba(34, 197, 94, 0.10)"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <IconScan color={colorTokens.primary} size={24} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          </YStack>
+          <YStack flex={1} gap="$1">
+            <Text fontFamily="$heading" fontSize="$md" color="$color">
+              Escaneo rápido
+            </Text>
+            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+              Abrí la cámara, leé el producto y mirá el precio más bajo con su top de ofertas.
+            </Text>
+          </YStack>
+        </XStack>
+      </Card>
+    );
+  }, [mode]);
+
+  const scanHistory = recentScans.length > 0 ? (
+    <YStack gap="$2">
+      {recentScans.map((entry) => (
+        <RecentScanCard
+          key={entry.id}
+          entry={entry}
+          onPress={() =>
+            navigation.navigate('ScanResult', {
+              storeBranchId: entry.storeBranchId,
+              barcodeId: entry.barcodeId,
+              product: entry.product,
+              storeProduct: entry.storeProduct,
+              fromSearch: entry.source === 'manual',
+              fromCache: entry.source === 'cached',
+              priceOffers: entry.priceOffers,
+            })
+          }
+        />
+      ))}
+    </YStack>
+  ) : (
+    <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
+      <Text fontFamily="$heading" fontSize="$md" color="$color">
+        Todavía no hay escaneos
+      </Text>
+      <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+        Los productos que pases por la cámara aparecerán acá durante esta sesión.
+      </Text>
+    </Card>
+  );
+
+  const manualResults =
+    debouncedSearchText.length >= 5 ? (
+      productSearchQuery.isFetching ? (
+        <XStack alignItems="center" gap="$2" backgroundColor="rgba(34, 197, 94, 0.08)" borderRadius="$3" padding="$3">
+          <ActivityIndicator color={colorTokens.primary} />
+          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+            Buscando coincidencias...
+          </Text>
+        </XStack>
+      ) : productSearchQuery.isError ? (
+        <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
+          <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
+            No pudimos buscar productos. Revisá tu conexión e intentá de nuevo.
+          </Text>
+        </XStack>
+      ) : productSearchQuery.data && productSearchQuery.data.length > 0 ? (
+        <YStack gap="$2">
+          {productSearchQuery.data.map((item) => (
+            <Button
+              key={item.product.id}
+              backgroundColor="$surface"
+              borderWidth={1}
+              borderColor="$borderColor"
+              borderRadius="$4"
+              padding="$3"
+              minHeight={72}
+              justifyContent="space-between"
+              alignItems="center"
+              onPress={() =>
+                openScanResult({
+                  barcodeId: null,
+                  storeBranchId: routeStoreBranchId ?? null,
+                  product: item.product,
+                  storeProduct: item.store_product,
+                  priceOffers: [],
+                  source: 'manual',
+                  fromSearch: true,
+                })
+              }
+            >
+              <XStack alignItems="center" gap="$3" flex={1}>
+                <YStack
+                  width={42}
+                  height={42}
+                  borderRadius="$full"
+                  backgroundColor="rgba(34, 197, 94, 0.08)"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                </YStack>
+                <YStack flex={1} gap="$0.5">
+                  <Text fontFamily="$heading" fontSize="$sm" color="$color" textAlign="left" numberOfLines={2}>
+                    {item.product.canonical_name}
+                  </Text>
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left" numberOfLines={2}>
+                    {item.product.brand_name ?? 'Sin marca'}
+                    {item.product.presentation ? ` · ${item.product.presentation}` : ''}
+                  </Text>
+                </YStack>
+              </XStack>
+              <YStack alignItems="flex-end" gap="$0.5">
+                {item.store_product ? (
+                  <>
+                    <Text fontFamily="$heading" fontSize="$sm" color="$color" textAlign="right">
+                      ${formatPrice(item.store_product.current_price)}
+                    </Text>
+                    <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                      Ver precio
+                    </Text>
+                  </>
+                ) : (
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                    Sin precio en esta sucursal
+                  </Text>
+                )}
+              </YStack>
+            </Button>
+          ))}
+        </YStack>
+      ) : (
+        <Card backgroundColor="rgba(15, 23, 42, 0.04)" borderRadius="$3" padding="$3">
+          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+            No encontramos coincidencias con esa búsqueda.
+          </Text>
+        </Card>
+      )
+    ) : (
+      <Card backgroundColor="rgba(15, 23, 42, 0.04)" borderRadius="$3" padding="$3">
+        <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+          Escribí al menos 5 caracteres para ver coincidencias.
+        </Text>
+      </Card>
+    );
 
   if (!hasPermission) {
     return (
       <YStack flex={1} backgroundColor={colorTokens.background}>
         <FlowHeader
           title="Escanear producto"
-          subtitle={storeBranchLabel}
+          subtitle="Necesitamos la cámara para leer códigos de barra."
           onBack={() => navigation.goBack()}
         />
         <YStack flex={1} padding="$4" justifyContent="center">
@@ -253,7 +703,7 @@ export function ScanScreen({ route, navigation }: Props) {
               alignItems="center"
               justifyContent="center"
             >
-              <IconBarcode color={colorTokens.primary} size={30} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
+              <IconBarcode color={colorTokens.primary} size={30} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
             </YStack>
 
             <YStack gap="$1">
@@ -278,256 +728,184 @@ export function ScanScreen({ route, navigation }: Props) {
     <YStack flex={1} backgroundColor={colorTokens.background}>
       <FlowHeader
         title="Escanear producto"
-        subtitle={storeBranchLabel}
+        subtitle={
+          mode === 'scan'
+            ? routeStoreBranchId != null
+              ? 'Contexto de sucursal activo'
+              : 'Escaneo rápido sin sucursal'
+            : mode === 'history'
+              ? 'Revisá los últimos escaneos de esta sesión'
+              : 'Buscá por nombre, marca, presentación o código'
+        }
         onBack={() => navigation.goBack()}
       />
 
       <YStack flex={1} paddingHorizontal="$4" paddingBottom="$4" gap="$4">
-        <YStack
-          flex={1}
-          borderRadius={28}
-          backgroundColor={colorTokens.textPrimary}
-          style={styles.cameraCard}
-          borderWidth={1}
-          borderColor="rgba(15, 23, 42, 0.08)"
-        >
-          {device ? (
-            <Camera
-              style={StyleSheet.absoluteFill}
-              device={device}
-              isActive={hasPermission && isFocused}
-              outputs={[barcodeScannerOutput]}
+        <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$2">
+          <XStack gap="$2">
+            <ScanModeButton
+              active={mode === 'scan'}
+              label="Escanear"
+              icon={<IconScan color={mode === 'scan' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={() => setMode('scan')}
             />
-          ) : (
-            <YStack flex={1} alignItems="center" justifyContent="center">
-              <ActivityIndicator color={colorTokens.primary} />
-              <Text fontFamily="$body" fontSize="$sm" color="$white" marginTop="$2">
-                Buscando cámara disponible...
-              </Text>
-            </YStack>
-          )}
+            <ScanModeButton
+              active={mode === 'history'}
+              label="Historial"
+              icon={<IconHistory color={mode === 'history' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={() => setMode('history')}
+            />
+            <ScanModeButton
+              active={mode === 'manual'}
+              label="Manual"
+              icon={<IconBarcode color={mode === 'manual' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+              onPress={() => setMode('manual')}
+            />
+          </XStack>
+        </Card>
 
-          <YStack position="absolute" top="$3" left="$3" right="$3" gap="$2">
-            <XStack alignItems="center" justifyContent="space-between" gap="$2">
-              <Card backgroundColor="rgba(15, 23, 42, 0.72)" borderRadius="$full" paddingHorizontal="$3" paddingVertical="$2">
-                <Text fontFamily="$body" fontSize="$xs" color="$white">
-                  Listo para validar el precio
-                </Text>
-              </Card>
-              {hasStoreBranch ? (
-                <Card
-                  backgroundColor="rgba(34, 197, 94, 0.16)"
-                  borderRadius="$full"
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                >
-                  <Text fontFamily="$body" fontSize="$xs" color="$white">
-                    {storeBranchLabel}
-                  </Text>
-                </Card>
+        {helperCard}
+
+        {mode === 'scan' ? (
+          <YStack gap="$3" flex={1}>
+            <YStack
+              flex={1}
+              borderRadius={28}
+              backgroundColor={colorTokens.textPrimary}
+              style={[styles.cameraCard, styles.cameraSurface]}
+              borderWidth={1}
+              borderColor="rgba(15, 23, 42, 0.08)"
+            >
+              {device ? (
+                <Camera
+                  style={StyleSheet.absoluteFill}
+                  device={device}
+                  isActive={hasPermission && isFocused && mode === 'scan'}
+                  outputs={[barcodeScannerOutput]}
+                />
               ) : (
-                <Button
-                  backgroundColor="rgba(34, 197, 94, 0.16)"
-                  color="$white"
-                  borderRadius="$full"
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  minHeight={32}
-                  onPress={() => navigation.navigate('BranchSelect')}
-                >
-                  Elegir sucursal
-                </Button>
+                <YStack flex={1} alignItems="center" justifyContent="center">
+                  <ActivityIndicator color={colorTokens.primary} />
+                  <Text fontFamily="$body" fontSize="$sm" color="$white" marginTop="$2">
+                    Buscando cámara disponible...
+                  </Text>
+                </YStack>
               )}
-            </XStack>
-          </YStack>
 
-          <YStack flex={1} alignItems="center" justifyContent="center">
-            <YStack width={232} height={232} borderRadius={32} borderWidth={2} borderColor="rgba(255, 255, 255, 0.95)" backgroundColor="rgba(255, 255, 255, 0.03)" alignItems="center" justifyContent="center" gap="$3">
               <YStack
-                width={68}
-                height={68}
-                borderRadius="$full"
-                backgroundColor="rgba(255, 255, 255, 0.14)"
+                flex={1}
                 alignItems="center"
                 justifyContent="center"
+                pointerEvents="none"
               >
-                <IconScan color={colorTokens.white} size={30} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-              </YStack>
-              <Text fontFamily="$heading" fontSize="$lg" color="$white" textAlign="center">
-                Apuntá al código
-              </Text>
-              <Text fontFamily="$body" fontSize="$xs" color="#E2E8F0" textAlign="center" paddingHorizontal="$3">
-                Escaneá con la cámara o usá la búsqueda manual de abajo como respaldo.
-              </Text>
-            </YStack>
-          </YStack>
-
-          <YStack position="absolute" bottom="$3" left="$3" right="$3">
-            <Card backgroundColor="rgba(15, 23, 42, 0.72)" borderRadius="$4" padding="$3">
-              <Text fontFamily="$body" fontSize="$xs" color="#E2E8F0" textAlign="center">
-                El lector automático ya está activo. El campo manual queda como respaldo.
-              </Text>
-            </Card>
-          </YStack>
-
-          <YStack style={styles.frameCorner} pointerEvents="none" />
-          <YStack style={[styles.frameCorner, styles.frameTopLeft]} pointerEvents="none" />
-          <YStack style={[styles.frameCorner, styles.frameTopRight]} pointerEvents="none" />
-          <YStack style={[styles.frameCorner, styles.frameBottomLeft]} pointerEvents="none" />
-          <YStack style={[styles.frameCorner, styles.frameBottomRight]} pointerEvents="none" />
-        </YStack>
-
-        <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
-          <XStack alignItems="center" gap="$2">
-            <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            <Text fontFamily="$heading" fontSize="$sm" color="$color">
-              Búsqueda manual
-            </Text>
-          </XStack>
-
-          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-            Buscá por nombre, marca, presentación o código. Si querés validar un barcode exacto, usá el botón.
-          </Text>
-
-          {!hasStoreBranch && (
-            <Card backgroundColor="rgba(34, 197, 94, 0.08)" borderRadius="$3" padding="$3">
-              <XStack alignItems="center" justifyContent="space-between" gap="$2">
-                <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" flex={1}>
-                  Necesitás una sucursal para buscar el precio exacto.
-                </Text>
-                <Button chromeless size="$2" onPress={() => navigation.navigate('BranchSelect')}>
-                  Elegir
-                </Button>
-              </XStack>
-            </Card>
-          )}
-
-          <XStack gap="$2" alignItems="center">
-            <Input
-              flex={1}
-              placeholder="Nombre, marca, presentación o código"
-              value={searchText}
-              onChangeText={setSearchText}
-              onSubmitEditing={handleSubmit}
-            />
-            <Button
-              backgroundColor="$primary"
-              color="$white"
-              disabled={searchText.trim().length < 5 || scanMutation.isPending}
-              onPress={handleSubmit}
-              minWidth={112}
-            >
-              {scanMutation.isPending ? <ActivityIndicator color={colorTokens.white} /> : 'Buscar'}
-            </Button>
-          </XStack>
-
-          {debouncedSearchText.length < 5 ? (
-            <Card backgroundColor="rgba(15, 23, 42, 0.04)" borderRadius="$3" padding="$3">
-              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                Escribí al menos 5 caracteres para ver coincidencias.
-              </Text>
-            </Card>
-          ) : productSearchQuery.isFetching ? (
-            <XStack alignItems="center" gap="$2" backgroundColor="rgba(34, 197, 94, 0.08)" borderRadius="$3" padding="$3">
-              <ActivityIndicator color={colorTokens.primary} />
-              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                Buscando coincidencias...
-              </Text>
-            </XStack>
-          ) : productSearchQuery.isError ? (
-            <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
-              <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-              <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
-                No pudimos buscar productos. Revisá tu conexión e intentá de nuevo.
-              </Text>
-            </XStack>
-          ) : productSearchQuery.data && productSearchQuery.data.length > 0 ? (
-            <YStack gap="$2">
-              {productSearchQuery.data.map((item) => (
-                <Button
-                  key={item.product.id}
-                  backgroundColor="$surface"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderRadius="$4"
-                  padding="$3"
-                  minHeight={72}
-                  justifyContent="space-between"
+                <YStack
+                  width={244}
+                  height={244}
+                  borderRadius={32}
+                  borderWidth={2}
+                  borderColor="rgba(255, 255, 255, 0.94)"
+                  backgroundColor="rgba(255, 255, 255, 0.03)"
                   alignItems="center"
-                  onPress={() =>
-                    navigation.navigate('ScanResult', {
-                      storeBranchId: storeBranchId ?? null,
-                      barcodeId: null,
-                      product: item.product,
-                      storeProduct: item.store_product,
-                      fromSearch: true,
-                    })
-                  }
+                  justifyContent="center"
                 >
-                  <XStack alignItems="center" gap="$3" flex={1}>
-                    <YStack
-                      width={42}
-                      height={42}
-                      borderRadius="$full"
-                      backgroundColor="rgba(34, 197, 94, 0.08)"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-                    </YStack>
-                    <YStack flex={1} gap="$0.5">
-                      <Text fontFamily="$heading" fontSize="$sm" color="$color" textAlign="left" numberOfLines={2}>
-                        {item.product.canonical_name}
-                      </Text>
-                      <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left" numberOfLines={2}>
-                        {item.product.brand_name ?? 'Sin marca'}
-                        {item.product.presentation ? ` · ${item.product.presentation}` : ''}
-                      </Text>
-                    </YStack>
-                  </XStack>
-                  <YStack alignItems="flex-end" gap="$0.5">
-                    {item.store_product ? (
-                      <>
-                        <Text fontFamily="$heading" fontSize="$sm" color="$color" textAlign="right">
-                          ${Number(item.store_product.current_price).toLocaleString('es-PA', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </Text>
-                        <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                          Ver precio
-                        </Text>
-                      </>
-                    ) : (
-                      <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                        Sin precio en esta sucursal
-                      </Text>
-                    )}
+                  <YStack
+                    width={68}
+                    height={68}
+                    borderRadius="$full"
+                    backgroundColor="rgba(255, 255, 255, 0.12)"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <IconScan color={colorTokens.white} size={30} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
                   </YStack>
-                </Button>
-              ))}
-            </YStack>
-          ) : debouncedSearchText.length >= 5 ? (
-            <Card backgroundColor="rgba(15, 23, 42, 0.04)" borderRadius="$3" padding="$3">
-              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                No encontramos coincidencias con esa búsqueda.
-              </Text>
-            </Card>
-          ) : null}
+                </YStack>
+              </YStack>
 
-          {offlineNotice && (
-            <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
-              <IconAlertTriangle
-                color={colorTokens.danger}
-                size={16}
-                strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-              />
-              <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
-                {offlineNotice}
+              <YStack style={[styles.frameCorner, styles.frameTopLeft]} pointerEvents="none" />
+              <YStack style={[styles.frameCorner, styles.frameTopRight]} pointerEvents="none" />
+              <YStack style={[styles.frameCorner, styles.frameBottomLeft]} pointerEvents="none" />
+              <YStack style={[styles.frameCorner, styles.frameBottomRight]} pointerEvents="none" />
+            </YStack>
+
+            {offlineNotice && (
+              <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
+                <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
+                  {offlineNotice}
+                </Text>
+              </XStack>
+            )}
+          </YStack>
+        ) : null}
+
+        {mode === 'manual' ? (
+          <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
+            <XStack alignItems="center" gap="$2">
+              <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                Búsqueda manual
               </Text>
             </XStack>
-          )}
-        </Card>
+
+            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+              Buscá por nombre, marca, presentación o código. Si querés validar un barcode exacto, usá el botón.
+            </Text>
+
+            <XStack gap="$2" alignItems="center">
+              <Input
+                flex={1}
+                placeholder="Nombre, marca, presentación o código"
+                value={searchText}
+                onChangeText={setSearchText}
+                onSubmitEditing={handleSubmit}
+              />
+              <Button
+                backgroundColor="$primary"
+                color="$white"
+                disabled={searchText.trim().length < 5 || scanMutation.isPending}
+                onPress={handleSubmit}
+                minWidth={112}
+              >
+                {scanMutation.isPending ? <ActivityIndicator color={colorTokens.white} /> : 'Buscar'}
+              </Button>
+            </XStack>
+
+            {manualResults}
+
+            {offlineNotice && (
+              <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
+                <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
+                  {offlineNotice}
+                </Text>
+              </XStack>
+            )}
+          </Card>
+        ) : null}
+
+        {mode === 'history' ? scanHistory : null}
+
+        {latestScan ? (
+          <YStack gap="$2">
+            <Text fontFamily="$heading" fontSize="$sm" color="$color">
+              Ultimo elemento escaneado
+            </Text>
+            <RecentScanCard
+              entry={latestScan}
+              onPress={() =>
+                navigation.navigate('ScanResult', {
+                  storeBranchId: latestScan.storeBranchId,
+                  barcodeId: latestScan.barcodeId,
+                  product: latestScan.product,
+                  storeProduct: latestScan.storeProduct,
+                  fromSearch: latestScan.source === 'manual',
+                  fromCache: latestScan.source === 'cached',
+                  priceOffers: latestScan.priceOffers,
+                })
+              }
+            />
+          </YStack>
+        ) : null}
       </YStack>
     </YStack>
   );

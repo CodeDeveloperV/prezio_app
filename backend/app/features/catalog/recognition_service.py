@@ -14,6 +14,7 @@ from app.features.catalog.schemas import (
     ScanFoundResult,
     ScanNeedsDisambiguationResult,
     ScanNotFoundResult,
+    ScanPriceOfferRead,
     ScanProductDetails,
 )
 from app.features.pricing.schemas import StoreProductRead
@@ -48,20 +49,65 @@ class ProductRecognitionService:
     async def scan(
         self, request: ScanBarcodeRequest
     ) -> ScanFoundResult | ScanNeedsDisambiguationResult | ScanNotFoundResult | ScanConflictResult:
-        branch = await self.store_branches.get_by_id(request.store_branch_id)
-        if branch is None:
-            raise StoreBranchNotFound(request.store_branch_id)
+        if request.store_branch_id is not None:
+            branch = await self.store_branches.get_by_id(request.store_branch_id)
+            if branch is None:
+                raise StoreBranchNotFound(request.store_branch_id)
 
-        result = await self.engine.resolve(
-            barcode=request.barcode,
-            store_id=branch.store_id,
-            store_branch_id=request.store_branch_id,
-            name_hint=request.name_hint,
-            brand_id=request.brand_id,
-            category_id=request.category_id,
-            presentation=request.presentation,
-            image_url=request.image_url,
-        )
+            result = await self.engine.resolve(
+                barcode=request.barcode,
+                store_id=branch.store_id,
+                store_branch_id=request.store_branch_id,
+                name_hint=request.name_hint,
+                brand_id=request.brand_id,
+                category_id=request.category_id,
+                presentation=request.presentation,
+                image_url=request.image_url,
+            )
+        else:
+            rows = await self.barcodes.find_matches_for_lookup_any_store(request.barcode)
+            if not rows:
+                return ScanNotFoundResult()
+
+            distinct_product_ids = {row.product_id for row in rows}
+            if len(distinct_product_ids) > 1:
+                candidate_products = [await self.engine.products.get_by_id(pid) for pid in distinct_product_ids]
+                return ScanConflictResult(
+                    candidates=[ProductRead.model_validate(p) for p in candidate_products if p is not None],
+                    warnings=[
+                        f"Barcode '{request.barcode}' is registered to more than one product. "
+                        "Open the manual disambiguation flow to pick the correct one."
+                    ],
+                )
+
+            row = rows[0]
+            product = await self.engine.products.get_by_id(row.product_id)
+            if product is None:
+                return ScanNotFoundResult()
+
+            brand_name = None
+            if product.brand_id is not None:
+                brand = await self.brands.get_by_id(product.brand_id)
+                brand_name = brand.name if brand else None
+
+            price_offers = await self._build_price_offers(product.id)
+            store_product = None
+            if price_offers:
+                store_product = await self.engine.store_products.get_by_id(price_offers[0].store_product_id)
+
+            return ScanFoundResult(
+                barcode_id=row.id,
+                product=ScanProductDetails(
+                    id=product.id,
+                    canonical_name=product.canonical_name,
+                    brand_name=brand_name,
+                    presentation=product.presentation,
+                    image_url=product.image_url,
+                    status=product.status,
+                ),
+                store_product=StoreProductRead.model_validate(store_product) if store_product else None,
+                price_offers=price_offers,
+            )
 
         if result.status in (ResolutionStatus.STORE_MATCH, ResolutionStatus.GLOBAL_MATCH):
             product = result.product
@@ -70,6 +116,11 @@ class ProductRecognitionService:
             if product.brand_id is not None:
                 brand = await self.brands.get_by_id(product.brand_id)
                 brand_name = brand.name if brand else None
+
+            price_offers = await self._build_price_offers(product.id)
+            store_product = result.store_product
+            if store_product is None and price_offers:
+                store_product = await self.engine.store_products.get_by_id(price_offers[0].store_product_id)
 
             return ScanFoundResult(
                 barcode_id=result.barcode.id,
@@ -81,7 +132,8 @@ class ProductRecognitionService:
                     image_url=product.image_url,
                     status=product.status,
                 ),
-                store_product=StoreProductRead.model_validate(result.store_product) if result.store_product else None,
+                store_product=StoreProductRead.model_validate(store_product) if store_product else None,
+                price_offers=price_offers,
             )
 
         if result.status is ResolutionStatus.POSSIBLE_MATCHES:
@@ -103,6 +155,41 @@ class ProductRecognitionService:
             )
 
         return ScanNotFoundResult()
+
+    async def _build_price_offers(self, product_id: int) -> list[ScanPriceOfferRead]:
+        store_products = await self.engine.store_products.list_by_product(product_id)
+        if not store_products:
+            return []
+
+        store_products = sorted(
+            store_products,
+            key=lambda item: (
+                float(item.current_price),
+                item.last_verified_at.isoformat() if item.last_verified_at else "",
+                item.id,
+            ),
+        )[:6]
+        branch_ids = [store_product.store_branch_id for store_product in store_products]
+        branches = await self.store_branches.list_by_ids(branch_ids)
+        branches_by_id = {branch.id: branch for branch in branches}
+
+        offers: list[ScanPriceOfferRead] = []
+        for store_product in store_products:
+            branch = branches_by_id.get(store_product.store_branch_id)
+            store = branch.store if branch else None
+            offers.append(
+                ScanPriceOfferRead(
+                    store_product_id=store_product.id,
+                    store_branch_id=store_product.store_branch_id,
+                    store_name=store.name if store else '',
+                    store_branch_name=branch.name if branch else '',
+                    current_price=store_product.current_price,
+                    currency=store_product.currency,
+                    availability=store_product.availability,
+                    last_verified_at=store_product.last_verified_at,
+                )
+            )
+        return offers
 
     async def attach_barcode_to_existing_product(
         self, product_id: int, request: AttachBarcodeRequest, created_by: int

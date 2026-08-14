@@ -23,7 +23,7 @@ export function ShoppingSessionStack() {
       <Stack.Screen
         name="BranchSelect"
         component={BranchSelectScreen}
-        options={{ title: 'Escanear', headerShown: false }}
+        options={{ title: 'Nueva compra', headerShown: false }}
       />
       <Stack.Screen name="ScanResult" component={ScanResultScreen} options={{ title: 'Producto', headerShown: false }} />
       <Stack.Screen

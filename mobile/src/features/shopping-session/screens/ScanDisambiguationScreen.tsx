@@ -84,15 +84,15 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
 
   const handleSelectCandidate = (candidate: ProductMatchCandidate) => {
     setSelectedCandidateId(candidate.product.id);
-    attachBarcodeMutation.mutate(
-      {
-        productId: candidate.product.id,
-        request: { barcode, barcode_type: barcodeType },
-      },
-      {
-        onSuccess: () => navigation.replace('Scan', { storeBranchId }),
-      },
-    );
+      attachBarcodeMutation.mutate(
+        {
+          productId: candidate.product.id,
+          request: { barcode, barcode_type: barcodeType },
+        },
+        {
+          onSuccess: () => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId }),
+        },
+      );
   };
 
   return (
@@ -153,7 +153,7 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
           <Button
             backgroundColor="$primary"
             color="$white"
-            onPress={() => navigation.replace('CreateProduct', { storeBranchId, barcode, barcodeType })}
+            onPress={() => navigation.replace('CreateProduct', storeBranchId == null ? { barcode, barcodeType } : { storeBranchId, barcode, barcodeType })}
           >
             Crear producto
           </Button>

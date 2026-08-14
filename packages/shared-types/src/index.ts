@@ -168,7 +168,7 @@ export interface MoveAliasRequest {
 export interface ScanBarcodeRequest {
   barcode: string;
   barcode_type?: BarcodeType;
-  store_branch_id: number;
+  store_branch_id?: number | null;
   country?: string | null;
   // Hints used only to search for candidates when the barcode is unknown -- none of these
   // identify the product on their own, they only feed the matcher's scoring.
@@ -190,12 +190,24 @@ export interface ScanProductDetails {
   status: ModerationStatus;
 }
 
+export interface ScanPriceOffer {
+  store_product_id: number;
+  store_branch_id: number;
+  store_name: string;
+  store_branch_name: string;
+  current_price: string;
+  currency: string;
+  availability: Availability;
+  last_verified_at: ISODateTime | null;
+}
+
 export interface ScanFoundResult {
   status: 'found';
   // Lets the client call POST /catalog/barcodes/{barcode_id}/report ("Producto incorrecto").
   barcode_id: number;
   product: ScanProductDetails;
   store_product: StoreProductRead | null;
+  price_offers: ScanPriceOffer[];
 }
 
 export interface CatalogSearchResult {
