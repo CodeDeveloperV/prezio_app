@@ -22,6 +22,7 @@ import { EditPricingDialog } from '../components/EditPricingDialog';
 import { PriceHistoryDialog } from '../components/PriceHistoryDialog';
 import { PriceSourceChip } from '../components/PriceSourceChip';
 import { usePricing } from '../hooks/usePricing';
+import { usePricingRealtime } from '../hooks/usePricingRealtime';
 
 import type { PricingFilters } from '../api/pricingApi';
 import type { GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
@@ -58,6 +59,11 @@ export function PricingPage() {
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
 
   const rows = pricingQuery.data ?? [];
+
+  usePricingRealtime(
+    storeId,
+    rows.map((row) => row.store_product_id),
+  );
 
   const selectedItems =
     selectionModel.type === 'include'
