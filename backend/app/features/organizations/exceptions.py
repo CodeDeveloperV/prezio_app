@@ -25,3 +25,9 @@ class LastOrganizationAdminError(Exception):
     """Raised when an action would leave the organization with no active admin."""
 
     pass
+
+
+class BranchNotFound(Exception):
+    """Raised when a branch_id doesn't exist or doesn't belong to the organization."""
+
+    pass

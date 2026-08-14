@@ -42,3 +42,13 @@ class OrganizationMemberUpdate(BaseModel):
     role: OrganizationRole | None = None
     status: OrganizationMemberStatus | None = None
     branch_ids: list[int] | None = None
+
+
+class BranchCreate(BaseModel):
+    name: str
+    city: str
+
+
+class BranchUpdate(BaseModel):
+    name: str | None = None
+    city: str | None = None

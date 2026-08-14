@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.organizations.enums import OrganizationMemberStatus, OrganizationRole
 from app.features.organizations.exceptions import (
+    BranchNotFound,
     InvalidBranchForOrganization,
     LastOrganizationAdminError,
     OrganizationMemberAlreadyExists,
@@ -11,13 +12,17 @@ from app.features.organizations.exceptions import (
 from app.features.organizations.models import OrganizationMember
 from app.features.organizations.repository import OrganizationMemberBranchRepository, OrganizationMemberRepository
 from app.features.organizations.schemas import (
+    BranchCreate,
+    BranchUpdate,
     MyMembershipRead,
     OrganizationMemberInvite,
     OrganizationMemberRead,
     OrganizationMemberUpdate,
     OrganizationRead,
 )
+from app.features.stores.models import StoreBranch
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
+from app.features.stores.schemas import StoreBranchRead
 from app.features.users.repository import UserRepository
 
 
@@ -140,6 +145,35 @@ class OrganizationMembershipService:
 
         await self.members.delete(member)
         await self.db.commit()
+
+    async def list_branches(self, store_id: int, member: OrganizationMember) -> list[StoreBranchRead]:
+        """ORGANIZATION_ADMIN sees every branch of the store; MANAGER/EMPLOYEE only the
+        branches they've been explicitly granted access to."""
+        if member.role == OrganizationRole.ORGANIZATION_ADMIN:
+            branches = await self.store_branches.list_by_store(store_id)
+        else:
+            branch_ids = [b.store_branch_id for b in member.branch_access]
+            branches = [b for b in await self.store_branches.list_by_ids(branch_ids) if b.store_id == store_id]
+        return [StoreBranchRead.model_validate(b) for b in branches]
+
+    async def create_branch(self, store_id: int, payload: BranchCreate) -> StoreBranchRead:
+        branch = StoreBranch(store_id=store_id, name=payload.name, city=payload.city)
+        await self.store_branches.add(branch)
+        await self.db.commit()
+        return StoreBranchRead.model_validate(branch)
+
+    async def update_branch(self, store_id: int, branch_id: int, payload: BranchUpdate) -> StoreBranchRead:
+        branch = await self.store_branches.get_by_id(branch_id)
+        if branch is None or branch.store_id != store_id:
+            raise BranchNotFound(branch_id)
+
+        if payload.name is not None:
+            branch.name = payload.name
+        if payload.city is not None:
+            branch.city = payload.city
+
+        await self.db.commit()
+        return StoreBranchRead.model_validate(branch)
 
     async def _guard_last_admin(self, store_id: int, excluded_member_id: int) -> None:
         remaining_admins = await self.members.count_active_admins(

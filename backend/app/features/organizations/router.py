@@ -1,22 +1,31 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.features.auth.dependencies import get_current_user
-from app.features.organizations.dependencies import get_membership_service, require_organization_role
+from app.features.organizations.dependencies import (
+    get_membership_service,
+    require_organization_member,
+    require_organization_role,
+)
 from app.features.organizations.enums import OrganizationRole
 from app.features.organizations.exceptions import (
+    BranchNotFound,
     InvalidBranchForOrganization,
     LastOrganizationAdminError,
     OrganizationMemberAlreadyExists,
     OrganizationMembershipNotFound,
     UserNotFoundForInvite,
 )
+from app.features.organizations.models import OrganizationMember
 from app.features.organizations.schemas import (
+    BranchCreate,
+    BranchUpdate,
     MyMembershipRead,
     OrganizationMemberInvite,
     OrganizationMemberRead,
     OrganizationMemberUpdate,
 )
 from app.features.organizations.service import OrganizationMembershipService
+from app.features.stores.schemas import StoreBranchRead
 from app.features.users.models import User
 
 router = APIRouter(prefix="/b2b", tags=["b2b-organizations"])
@@ -83,6 +92,46 @@ async def update_member(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Organization must keep at least one active admin"
         ) from exc
+
+
+@router.get("/organizations/{store_id}/branches", response_model=list[StoreBranchRead])
+async def list_branches(
+    store_id: int,
+    member: OrganizationMember = Depends(require_organization_member),
+    service: OrganizationMembershipService = Depends(get_membership_service),
+) -> list[StoreBranchRead]:
+    return await service.list_branches(store_id, member)
+
+
+@router.post(
+    "/organizations/{store_id}/branches",
+    response_model=StoreBranchRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_organization_role(OrganizationRole.ORGANIZATION_ADMIN))],
+)
+async def create_branch(
+    store_id: int,
+    payload: BranchCreate,
+    service: OrganizationMembershipService = Depends(get_membership_service),
+) -> StoreBranchRead:
+    return await service.create_branch(store_id, payload)
+
+
+@router.patch(
+    "/organizations/{store_id}/branches/{branch_id}",
+    response_model=StoreBranchRead,
+    dependencies=[Depends(require_organization_role(OrganizationRole.ORGANIZATION_ADMIN))],
+)
+async def update_branch(
+    store_id: int,
+    branch_id: int,
+    payload: BranchUpdate,
+    service: OrganizationMembershipService = Depends(get_membership_service),
+) -> StoreBranchRead:
+    try:
+        return await service.update_branch(store_id, branch_id, payload)
+    except BranchNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Branch not found") from exc
 
 
 @router.delete(

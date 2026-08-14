@@ -774,3 +774,13 @@ export interface OrganizationMemberUpdate {
   status?: OrganizationMemberStatus;
   branch_ids?: number[];
 }
+
+export interface BranchCreate {
+  name: string;
+  city: string;
+}
+
+export interface BranchUpdate {
+  name?: string;
+  city?: string;
+}
