@@ -14,6 +14,7 @@ from app.features.comparison.router import router as comparison_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.moderation.router import router as moderation_router
 from app.features.notifications.router import router as notifications_router
+from app.features.organizations.catalog_router import router as organizations_catalog_router
 from app.features.organizations.router import router as organizations_router
 from app.features.pricing.router import router as pricing_router
 from app.features.reputation.router import router as reputation_router
@@ -59,6 +60,7 @@ app.include_router(alerts_router)
 app.include_router(dashboard_router)
 app.include_router(analytics_router)
 app.include_router(organizations_router)
+app.include_router(organizations_catalog_router)
 
 
 @app.get("/health")

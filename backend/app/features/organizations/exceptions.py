@@ -31,3 +31,11 @@ class BranchNotFound(Exception):
     """Raised when a branch_id doesn't exist or doesn't belong to the organization."""
 
     pass
+
+
+class BranchAccessDenied(Exception):
+    """Raised when a MANAGER/EMPLOYEE targets a branch that belongs to their organization but
+    that they haven't been explicitly granted access to (vs. `InvalidBranchForOrganization`,
+    which is for a branch that isn't part of the organization at all)."""
+
+    pass

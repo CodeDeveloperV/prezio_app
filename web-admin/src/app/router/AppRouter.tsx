@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { LoginPage } from '@/features/auth/screens/LoginPage';
+import { CatalogProductDetailPage } from '@/features/catalog/screens/CatalogProductDetailPage';
+import { CatalogProductsPage } from '@/features/catalog/screens/CatalogProductsPage';
 import { BranchesPage } from '@/features/organizations/screens/BranchesPage';
 import { ComingSoonPage } from '@/shared/components/ComingSoonPage';
 import { AppShell } from '../layout/AppShell';
@@ -15,7 +17,8 @@ export function AppRouter() {
         <Route element={<AppShell />}>
           <Route index element={<ComingSoonPage title="Dashboard" />} />
           <Route path="branches" element={<BranchesPage />} />
-          <Route path="catalog" element={<ComingSoonPage title="Catálogo" />} />
+          <Route path="catalog" element={<CatalogProductsPage />} />
+          <Route path="catalog/products/:productId" element={<CatalogProductDetailPage />} />
           <Route path="pricing" element={<ComingSoonPage title="Precios" />} />
           <Route path="promotions" element={<ComingSoonPage title="Promociones" />} />
           <Route path="coupons" element={<ComingSoonPage title="Cupones" />} />

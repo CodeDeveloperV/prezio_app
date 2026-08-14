@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.features.pricing.enums import Availability
+from app.features.pricing.enums import Availability, StoreProductStatus
 from app.shared.models_base import Base
 
 
@@ -22,6 +22,9 @@ class StoreProduct(Base):
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     version: Mapped[int] = mapped_column(default=1)
     availability: Mapped[Availability] = mapped_column(Enum(Availability, native_enum=False), default=Availability.UNKNOWN)
+    status: Mapped[StoreProductStatus] = mapped_column(
+        Enum(StoreProductStatus, native_enum=False), default=StoreProductStatus.ACTIVE
+    )
     last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_verified_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(

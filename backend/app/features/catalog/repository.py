@@ -1,4 +1,5 @@
 from sqlalchemy import or_, select
+from sqlalchemy.orm import selectinload
 
 from app.features.catalog.models import Brand, Category, Product, ProductAlias, ProductBarcode
 from app.shared.base_repository import BaseRepository
@@ -68,6 +69,51 @@ class ProductRepository(BaseRepository[Product]):
         if not product_ids:
             return []
         result = await self.session.execute(select(Product).where(Product.id.in_(product_ids)))
+        return list(result.scalars().all())
+
+    async def get_with_relations(self, product_id: int) -> Product | None:
+        """Eager-loads `.brand`/`.category`/`.barcodes` -- callers that render a display name
+        or a representative barcode for the product need them without a separate lazy-load
+        round trip in this async session."""
+        result = await self.session.execute(
+            select(Product)
+            .where(Product.id == product_id)
+            .options(
+                selectinload(Product.brand), selectinload(Product.category), selectinload(Product.barcodes)
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def search(
+        self,
+        *,
+        name: str | None = None,
+        barcode: str | None = None,
+        brand_id: int | None = None,
+        category_id: int | None = None,
+        status: ModerationStatus | None = None,
+    ) -> list[Product]:
+        """Broad catalog search backing the B2B portal's product browser -- unlike
+        `find_candidate_pool` (which returns a scoring pool for barcode-scan matching), every
+        filter here is an explicit AND narrowing the same result set."""
+        stmt = select(Product).options(
+            selectinload(Product.brand), selectinload(Product.category), selectinload(Product.barcodes)
+        )
+        if barcode:
+            stmt = stmt.join(ProductBarcode, ProductBarcode.product_id == Product.id).where(
+                ProductBarcode.barcode.ilike(f"%{barcode.strip()}%")
+            )
+        if name:
+            stmt = stmt.where(Product.canonical_name.ilike(f"%{name.strip()}%"))
+        if brand_id is not None:
+            stmt = stmt.where(Product.brand_id == brand_id)
+        if category_id is not None:
+            stmt = stmt.where(Product.category_id == category_id)
+        if status is not None:
+            stmt = stmt.where(Product.status == status)
+
+        stmt = stmt.distinct().order_by(Product.canonical_name)
+        result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
 

@@ -784,3 +784,66 @@ export interface BranchUpdate {
   name?: string;
   city?: string;
 }
+
+// --- B2B catalog (web-admin portal) --------------------------------------------------------
+// Fase 10.5. Read-only global-catalog browsing plus per-branch listing (StoreProduct)
+// management for the current organization -- never creates/edits/moderates a Product itself.
+// org_status/status here are a tri-state VIEW of the relationship, not a new backend enum:
+// NOT_LISTED means no StoreProduct row exists at all for that branch.
+
+export type OrgListingStatus = 'not_listed' | 'active' | 'inactive';
+
+export type StoreProductStatus = 'active' | 'inactive';
+
+export interface CatalogProductSummary {
+  id: number;
+  canonical_name: string;
+  brand_name: string | null;
+  presentation: string | null;
+  category_name: string | null;
+  barcode: string | null;
+  image_url: string | null;
+  status: ModerationStatus;
+  recognition_type: RecognitionType;
+  // Count of this organization's branches (within the caller's branch scope) where the
+  // listing is currently ACTIVE.
+  branches_listed_count: number;
+  org_status: OrgListingStatus;
+}
+
+export interface BranchListingRead {
+  branch_id: number;
+  branch_name: string;
+  city: string;
+  status: OrgListingStatus;
+  store_product_id: number | null;
+  current_price: string | null;
+  currency: string | null;
+}
+
+export interface CatalogProductDetail {
+  id: number;
+  canonical_name: string;
+  brand_name: string | null;
+  presentation: string | null;
+  category_name: string | null;
+  barcode: string | null;
+  description: string | null;
+  image_url: string | null;
+  status: ModerationStatus;
+  recognition_type: RecognitionType;
+  branches: BranchListingRead[];
+}
+
+// Idempotent: if a branch already has an ACTIVE listing it's left untouched; an INACTIVE one
+// is reactivated (never overwriting its stored price); only a genuinely new listing uses
+// initial_price/currency. Never touches price on an already-ACTIVE listing -- see Fase 10.6.
+export interface CreateListingRequest {
+  branch_ids: number[];
+  initial_price: string;
+  currency?: string;
+}
+
+export interface UpdateListingStatusRequest {
+  status: StoreProductStatus;
+}

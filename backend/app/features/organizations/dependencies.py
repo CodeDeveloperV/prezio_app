@@ -3,10 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.features.auth.dependencies import get_current_user
+from app.features.catalog.repository import CategoryRepository, ProductRepository
+from app.features.catalog.service import CatalogService
+from app.features.organizations.catalog_service import B2BCatalogService
 from app.features.organizations.enums import OrganizationRole
 from app.features.organizations.models import OrganizationMember
 from app.features.organizations.repository import OrganizationMemberBranchRepository, OrganizationMemberRepository
 from app.features.organizations.service import OrganizationMembershipService
+from app.features.pricing.repository import StoreProductRepository
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
 from app.features.users.models import User
 from app.features.users.repository import UserRepository
@@ -20,6 +24,18 @@ def get_membership_service(db: AsyncSession = Depends(get_db)) -> OrganizationMe
         UserRepository(db),
         StoreRepository(db),
         StoreBranchRepository(db),
+    )
+
+
+def get_b2b_catalog_service(
+    db: AsyncSession = Depends(get_db),
+    membership: OrganizationMembershipService = Depends(get_membership_service),
+) -> B2BCatalogService:
+    return B2BCatalogService(
+        db,
+        CatalogService(CategoryRepository(db), ProductRepository(db)),
+        membership,
+        StoreProductRepository(db),
     )
 
 
