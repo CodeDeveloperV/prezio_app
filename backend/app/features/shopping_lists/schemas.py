@@ -22,6 +22,14 @@ class ShoppingListRead(ORMModel):
     name: str
     status: ShoppingListStatus
     created_at: datetime
+    active_store_branch_id: int | None
+
+
+class ShoppingListActiveBranchUpdate(BaseModel):
+    """Sets or clears (via null) the list's active_store_branch_id -- see
+    ShoppingListService.set_active_branch."""
+
+    store_branch_id: int | None
 
 
 class ShoppingListItemCreate(BaseModel):
@@ -46,6 +54,7 @@ class ShoppingListItemRead(ORMModel):
     version: int
     checked_at: datetime | None
     price_at_check: Decimal | None
+    store_branch_id: int | None
 
 
 class ShoppingListMemberRead(ORMModel):

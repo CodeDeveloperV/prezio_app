@@ -33,6 +33,7 @@ function makeEvent(overrides: Partial<ShoppingListItemEvent> & { version: number
       version: overrides.version ?? 1,
       checked_at: null,
       price_at_check: null,
+      store_branch_id: null,
     },
     ...overrides,
   };
@@ -79,6 +80,7 @@ test('an item_updated event writes the server state into WatermelonDB', async ()
         version: 2,
         checked_at: null,
         price_at_check: null,
+        store_branch_id: null,
       },
     }),
   );
@@ -108,6 +110,7 @@ test('an item_added event for an unknown server item creates a local row', async
         version: 1,
         checked_at: null,
         price_at_check: null,
+        store_branch_id: null,
       },
     }),
   );
@@ -136,6 +139,7 @@ test('drops a stale event whose version is behind the local record', async () =>
         version: 3,
         checked_at: null,
         price_at_check: null,
+        store_branch_id: null,
       },
     }),
   );
@@ -166,6 +170,7 @@ test('drops any event for a record a PendingAction still owns, even with a newer
         version: 99,
         checked_at: null,
         price_at_check: null,
+        store_branch_id: null,
       },
     }),
   );

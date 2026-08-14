@@ -32,6 +32,7 @@ from app.features.shopping_lists.repository import (
     ShoppingListRepository,
 )
 from app.features.shopping_lists.schemas import (
+    ShoppingListActiveBranchUpdate,
     ShoppingListCreate,
     ShoppingListInvitationCreate,
     ShoppingListInvitationRead,
@@ -43,6 +44,8 @@ from app.features.shopping_lists.schemas import (
 )
 from app.features.shopping_lists.service import ShoppingListService
 from app.features.pricing.repository import StoreProductRepository
+from app.features.stores.exceptions import StoreBranchNotFound
+from app.features.stores.repository import StoreBranchRepository
 from app.features.users.models import User
 from app.features.users.repository import UserRepository
 
@@ -64,6 +67,7 @@ def get_shopping_list_service(
         NotificationService(db, NotificationRepository(db)),
         ShoppingListPermissionService(),
         StoreProductRepository(db),
+        StoreBranchRepository(db),
     )
 
 
@@ -128,6 +132,26 @@ async def delete_shopping_list(
         raise HTTPException(404, "Shopping list not found") from exc
     except ShoppingListPermissionDenied as exc:
         raise HTTPException(403, str(exc)) from exc
+
+
+@router.patch("/{shopping_list_id}/active-branch", response_model=ShoppingListRead)
+async def set_active_branch(
+    shopping_list_id: int,
+    payload: ShoppingListActiveBranchUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ShoppingListService = Depends(get_shopping_list_service),
+) -> ShoppingListRead:
+    try:
+        shopping_list = await service.set_active_branch(
+            shopping_list_id, current_user.id, payload.store_branch_id
+        )
+    except ShoppingListNotFound as exc:
+        raise HTTPException(404, "Shopping list not found") from exc
+    except ShoppingListPermissionDenied as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except StoreBranchNotFound as exc:
+        raise HTTPException(404, "Store branch not found") from exc
+    return ShoppingListRead.model_validate(shopping_list)
 
 
 @router.get("/{shopping_list_id}/members", response_model=list[ShoppingListMemberRead])

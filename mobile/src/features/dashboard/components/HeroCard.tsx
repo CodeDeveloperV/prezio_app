@@ -35,12 +35,12 @@ export function HeroCard({
         borderColor="rgba(255, 255, 255, 0.08)"
         borderRadius="$4"
         padding="$5"
-        gap="$5"
+        gap="$4"
       >
         <XStack alignItems="flex-start" gap="$3">
           <YStack
-            width={44}
-            height={44}
+            width={48}
+            height={48}
             borderRadius="$full"
             backgroundColor="rgba(34, 197, 94, 0.14)"
             alignItems="center"
@@ -78,8 +78,8 @@ export function HeroCard({
           color={colorTokens.textPrimary}
           pressStyle={primaryPressStyle}
           borderRadius="$4"
-          paddingVertical="$3"
-          minHeight={52}
+          paddingVertical="$4"
+          minHeight={56}
         >
           <Text fontFamily="$heading" fontSize="$md" color={colorTokens.textPrimary}>
             Continuar compra
@@ -126,13 +126,13 @@ export function HeroCard({
       <Button
         onPress={onPressPrimaryAction}
         backgroundColor="$primary"
-        color={colorTokens.white}
+        color="$white"
         pressStyle={primaryPressStyle}
         borderRadius="$4"
         size="$5"
         icon={<IconPlus color={colorTokens.white} size={20} strokeWidth={STRONG_ICON_STROKE_WIDTH} />}
-        paddingVertical="$3"
-        minHeight={52}
+        paddingVertical="$4"
+        minHeight={56}
       >
         <Text fontFamily="$heading" fontSize="$md" color="$white">
           Nueva compra

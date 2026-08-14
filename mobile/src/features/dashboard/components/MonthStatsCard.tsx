@@ -1,4 +1,4 @@
-import { Card, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
 
 import {
   DEFAULT_ICON_STROKE_WIDTH,
@@ -7,6 +7,7 @@ import {
 } from '../../../app/theme/icons';
 import { colorTokens } from '../../../app/theme/tokens';
 import { formatMoney } from '../utils/format';
+import { DashboardCard } from './DashboardCard';
 
 import type { MonthlySummary } from '@prezio/shared-types';
 
@@ -35,15 +36,7 @@ export function MonthStatsCard({ currentMonth, previousMonth }: MonthStatsCardPr
   const previousSpent = Number(previousMonth.total_spent);
 
   return (
-    <Card
-      elevation={2}
-      backgroundColor="$surface"
-      borderWidth={1}
-      borderColor="$borderColor"
-      borderRadius="$4"
-      padding="$5"
-      gap="$4"
-    >
+    <DashboardCard gap="$4">
       <Text fontFamily="$heading" fontSize="$md" color="$color">
         Este mes
       </Text>
@@ -68,7 +61,7 @@ export function MonthStatsCard({ currentMonth, previousMonth }: MonthStatsCardPr
               Ahorrado
             </Text>
           </XStack>
-          <Text fontFamily="$heading" fontSize="$xl" color="$primary">
+          <Text fontFamily="$heading" fontSize="$xl" color="$primaryText">
             {formatMoney(currentMonth.total_savings)}
           </Text>
         </YStack>
@@ -77,6 +70,6 @@ export function MonthStatsCard({ currentMonth, previousMonth }: MonthStatsCardPr
       <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
         {comparisonLabel(spent, previousSpent)}
       </Text>
-    </Card>
+    </DashboardCard>
   );
 }

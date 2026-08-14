@@ -1,3 +1,4 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type {
   BarcodeType,
   ProductMatchCandidate,
@@ -13,10 +14,12 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Dashboard: undefined;
-  NewPurchase: undefined;
+  NewPurchase: NavigatorScreenParams<ShoppingSessionStackParamList> | undefined;
   Comparator: undefined;
   History: undefined;
-  Profile: undefined;
+  // Undefined navigates to the tab's initial screen (Profile); passing { screen: 'X' } opens a
+  // specific nested screen (e.g. the Dashboard "Ver estadísticas" CTA opening Analytics).
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 // Nested stack rendered inside the "Comparator" tab: pick a shopping list + city, then show
@@ -26,16 +29,18 @@ export type ComparisonStackParamList = {
   ComparatorResult: { result: ShoppingListComparisonResult };
 };
 
-// Nested stack rendered inside the "NewPurchase" tab: pick a branch, scan a barcode, then
-// either resolve to an existing product or fall through to disambiguation/creation.
+// Nested stack rendered inside the "NewPurchase" tab: open the camera first, optionally with
+// a branch context, then resolve a barcode to an existing product or fall through to
+// disambiguation/creation.
 export type ShoppingSessionStackParamList = {
   BranchSelect: undefined;
-  Scan: { storeBranchId: number };
+  Scan: { storeBranchId?: number } | undefined;
   ScanResult: {
-    storeBranchId: number;
-    barcodeId: number;
+    storeBranchId?: number | null;
+    barcodeId?: number | null;
     product: ScanProductDetails;
     storeProduct: StoreProductRead | null;
+    fromSearch?: boolean;
     // True when this result came from the offline cache (Epic 14) instead of a live lookup --
     // gates the online-only actions (confirm match, price update, report, alerts) and shows the
     // price as a snapshot rather than a guaranteed-current value.
@@ -70,4 +75,8 @@ export type ProfileStackParamList = {
   // Invites are online-only, so this is always the backend's numeric id (see ShoppingListDetailScreen).
   InviteMember: { shoppingListId: number };
   ShoppingListInvitations: undefined;
+  // Setting the active branch is online-only (needs the backend's numeric id) but the result is
+  // written back onto the local WatermelonDB record, so both ids travel together.
+  SetActiveBranch: { shoppingListId: number; shoppingListLocalId: string };
+  Analytics: undefined;
 };

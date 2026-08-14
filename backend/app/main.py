@@ -7,6 +7,7 @@ from app.core.alert_scheduler import alert_scheduler
 from app.core.config import get_settings
 from app.core.websocket_manager import redis_listener
 from app.features.alerts.router import router as alerts_router
+from app.features.analytics.router import router as analytics_router
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.comparison.router import router as comparison_router
@@ -55,6 +56,7 @@ app.include_router(shopping_list_invitations_router)
 app.include_router(notifications_router)
 app.include_router(alerts_router)
 app.include_router(dashboard_router)
+app.include_router(analytics_router)
 
 
 @app.get("/health")

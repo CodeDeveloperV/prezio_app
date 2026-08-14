@@ -25518,6 +25518,13 @@
           "val": "#16A34A",
           "variable": ""
         },
+        "primaryText": {
+          "isVar": true,
+          "key": "$primaryText",
+          "name": "c-primaryText",
+          "val": "#166534",
+          "variable": ""
+        },
         "background": {
           "isVar": true,
           "key": "$background",
@@ -25861,6 +25868,7 @@
       "dark": {
         "primary": "#22C55E",
         "primaryPress": "#16A34A",
+        "primaryText": "#22C55E",
         "background": "#0F172A",
         "backgroundHover": "#1E293B",
         "surface": "#1E293B",
@@ -25873,11 +25881,15 @@
         "color": "#FFFFFF",
         "colorSecondary": "#64748B",
         "borderColor": "#1E293B",
+        "borderColorHover": "#1E293B",
+        "borderColorPress": "#1E293B",
+        "borderColorFocus": "#1E293B",
         "id": "dark"
       },
       "light": {
         "primary": "#22C55E",
         "primaryPress": "#16A34A",
+        "primaryText": "#166534",
         "background": "#FFFFFF",
         "backgroundHover": "#F3F4F6",
         "surface": "#F3F4F6",
@@ -25890,6 +25902,9 @@
         "color": "#0F172A",
         "colorSecondary": "#64748B",
         "borderColor": "#F3F4F6",
+        "borderColorHover": "#F3F4F6",
+        "borderColorPress": "#F3F4F6",
+        "borderColorFocus": "#F3F4F6",
         "id": "light"
       }
     },
@@ -26044,6 +26059,13 @@
         "key": "$primaryPress",
         "name": "c-primaryPress",
         "val": "#16A34A",
+        "variable": ""
+      },
+      "$color.primaryText": {
+        "isVar": true,
+        "key": "$primaryText",
+        "name": "c-primaryText",
+        "val": "#166534",
         "variable": ""
       },
       "$color.surface": {

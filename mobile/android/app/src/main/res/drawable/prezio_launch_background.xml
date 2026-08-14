@@ -8,9 +8,24 @@
                 android:startColor="@color/prezio_launch_top" />
         </shape>
     </item>
-    <item>
+    <!-- Same white rounded badge card the logo sits in on Login/Register (heroBadge),
+         so the logo's own drop shadow reads against the light card it was designed
+         for instead of showing as a seam against this dark gradient. -->
+    <item
+        android:width="116dp"
+        android:height="116dp"
+        android:gravity="center">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/prezio_white" />
+            <corners android:radius="30dp" />
+        </shape>
+    </item>
+    <item
+        android:width="116dp"
+        android:height="116dp"
+        android:gravity="center">
         <bitmap
-            android:gravity="center"
+            android:gravity="fill"
             android:src="@drawable/prezio_launch_logo" />
     </item>
 </layer-list>

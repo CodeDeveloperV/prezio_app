@@ -9,6 +9,8 @@ from app.core.websocket_manager import SHOPPING_LIST_UPDATES_CHANNEL_PREFIX, USE
 from app.features.notifications.enums import NotificationType
 from app.features.notifications.service import NotificationService
 from app.features.pricing.repository import StoreProductRepository
+from app.features.stores.exceptions import StoreBranchNotFound
+from app.features.stores.repository import StoreBranchRepository
 from app.features.shopping_lists.enums import (
     ShoppingListInvitationStatus,
     ShoppingListMemberRole,
@@ -57,6 +59,7 @@ class ShoppingListService:
         notifications: NotificationService,
         policy: ShoppingListPermissionService,
         store_products: StoreProductRepository,
+        store_branches: StoreBranchRepository,
     ) -> None:
         self.db = db
         self.lists = lists
@@ -68,6 +71,7 @@ class ShoppingListService:
         self.notifications = notifications
         self.policy = policy
         self.store_products = store_products
+        self.store_branches = store_branches
 
     # ---- lists ----
 
@@ -153,6 +157,26 @@ class ShoppingListService:
         member = await self.members.get_for_list_and_user(shopping_list_id, user_id)
         return self.policy.can_view(member)
 
+    async def set_active_branch(
+        self, shopping_list_id: int, requesting_user_id: int, store_branch_id: int | None
+    ) -> ShoppingList:
+        """Sets (or, with None, clears) the branch this shopping session is currently happening
+        at. Read once per check-off (see `update_item`) to snapshot where an item was actually
+        bought -- changing it here never rewrites items already checked under a previous branch."""
+        shopping_list, member = await self._get_list_and_member(shopping_list_id, requesting_user_id)
+        if not self.policy.can_edit_items(member, shopping_list):
+            raise ShoppingListPermissionDenied("You cannot change the active branch of this list")
+
+        if store_branch_id is not None:
+            branch = await self.store_branches.get_by_id(store_branch_id)
+            if branch is None:
+                raise StoreBranchNotFound(store_branch_id)
+
+        await self.lists.set_active_branch(shopping_list_id, store_branch_id)
+        await self.db.commit()
+        shopping_list.active_store_branch_id = store_branch_id
+        return shopping_list
+
     # ---- items ----
 
     async def list_items(self, shopping_list_id: int, requesting_user_id: int) -> list[ShoppingListItem]:
@@ -211,14 +235,18 @@ class ShoppingListService:
             raise ShoppingListItemNotFound(item_id)
 
         # A checked-state transition is this item's "purchase" signal (Prezio has no separate
-        # purchase/order domain -- see backend/app/features/dashboard). Snapshot the cheapest
-        # current price across stores at the moment of check; clear the snapshot on uncheck.
+        # purchase/order domain -- see backend/app/features/dashboard and
+        # backend/app/features/analytics). Snapshot the list's currently-selected branch (if any)
+        # and that branch's real listed price -- never a "cheapest across any store" guess, since
+        # that isn't what the user actually paid. Both snapshots clear on uncheck.
         update_checked_snapshot = checked is not None and checked != existing.checked
         checked_at = None
         price_at_check = None
+        store_branch_id = None
         if update_checked_snapshot and checked:
             checked_at = datetime.now(timezone.utc)
-            price_at_check = await self._cheapest_current_price(existing.product_id)
+            store_branch_id = shopping_list.active_store_branch_id
+            price_at_check = await self._price_at_branch(existing.product_id, store_branch_id)
 
         updated = await self.items.update_if_version_matches(
             item_id,
@@ -228,6 +256,7 @@ class ShoppingListService:
             update_checked_snapshot=update_checked_snapshot,
             checked_at=checked_at,
             price_at_check=price_at_check,
+            store_branch_id=store_branch_id,
         )
         if updated is None:
             current = await self.items.get_by_id(item_id)
@@ -400,15 +429,18 @@ class ShoppingListService:
             raise ShoppingListInvitationAccessDenied(invitation_id)
         return invitation
 
-    async def _cheapest_current_price(self, product_id: int) -> Decimal | None:
-        """Prezio's core value proposition is comparing prices across stores, and a shopping-list
-        item has no store/branch of its own -- so the "purchase price" snapshotted on check is
-        the cheapest currently-listed price for the product across all stores, not a specific
-        store's price. None if no store currently lists this product."""
-        store_products = await self.store_products.list_by_product(product_id)
-        if not store_products:
+    async def _price_at_branch(self, product_id: int, store_branch_id: int | None) -> Decimal | None:
+        """The real price the user paid: whatever `product_id` is currently listed at in
+        `store_branch_id`. Returns None (never a cheapest-across-any-store guess) when the list
+        has no active branch selected, or when the selected branch doesn't list this product --
+        an unpriced purchase is more honest than an invented one, and analytics reports it as
+        such (see backend/app/features/analytics)."""
+        if store_branch_id is None:
             return None
-        return min(sp.current_price for sp in store_products)
+        store_product = await self.store_products.get_by_branch_and_product(store_branch_id, product_id)
+        if store_product is None:
+            return None
+        return store_product.current_price
 
     @staticmethod
     def _item_payload(item: ShoppingListItem) -> dict:
@@ -421,6 +453,7 @@ class ShoppingListService:
             "version": item.version,
             "checked_at": item.checked_at.isoformat() if item.checked_at else None,
             "price_at_check": str(item.price_at_check) if item.price_at_check is not None else None,
+            "store_branch_id": item.store_branch_id,
         }
 
     async def _publish_list_event(

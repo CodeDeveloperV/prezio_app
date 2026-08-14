@@ -36,6 +36,14 @@ class ShoppingListRepository(BaseRepository[ShoppingList]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def set_active_branch(self, shopping_list_id: int, store_branch_id: int | None) -> None:
+        await self.session.execute(
+            update(ShoppingList)
+            .where(ShoppingList.id == shopping_list_id)
+            .values(active_store_branch_id=store_branch_id)
+        )
+        await self.session.flush()
+
 
 class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
     model = ShoppingListItem
@@ -70,6 +78,7 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
         update_checked_snapshot: bool = False,
         checked_at: datetime | None = None,
         price_at_check: Decimal | None = None,
+        store_branch_id: int | None = None,
     ) -> ShoppingListItem | None:
         """Atomic `UPDATE ... WHERE id = ? AND version = ?`, same optimistic-concurrency pattern
         as StoreProductRepository.update_price_if_version_matches (pricing) -- no new mechanism.
@@ -86,6 +95,7 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
         if update_checked_snapshot:
             values["checked_at"] = checked_at
             values["price_at_check"] = price_at_check
+            values["store_branch_id"] = store_branch_id
 
         result = await self.session.execute(
             update(ShoppingListItem)

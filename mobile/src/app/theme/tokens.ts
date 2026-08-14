@@ -8,6 +8,9 @@ export const palette = {
   // Primary / CTA / price accent.
   green: '#22C55E',
   greenPress: '#16A34A',
+  // Text-safe variant of `green`: same hue, dark enough to pass 4.5:1 contrast
+  // on light surfaces (white/gray100), where `green` itself only reaches ~2.3:1.
+  greenText: '#166534',
   // Primary text color / dark-mode base surface.
   slate900: '#0F172A',
   // Secondary text.
@@ -27,6 +30,7 @@ export const colorTokens = {
   surface: palette.gray100,
   primary: palette.green,
   primaryPress: palette.greenPress,
+  primaryText: palette.greenText,
   textPrimary: palette.slate900,
   textSecondary: palette.slate500,
   danger: palette.red500,

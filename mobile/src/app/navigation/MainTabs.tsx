@@ -32,7 +32,7 @@ const TAB_ICONS = {
 const TAB_LABELS = {
   Dashboard: 'Inicio',
   Comparator: 'Comparar',
-  NewPurchase: 'Nueva compra',
+  NewPurchase: 'Escanear',
   History: 'Historial',
   Profile: 'Perfil',
 } as const;
@@ -137,8 +137,12 @@ function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarPro
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+            if (!event.defaultPrevented) {
+              if (route.name === primaryTabName) {
+                navigation.navigate('NewPurchase', { screen: 'Scan', params: {} });
+              } else if (!isFocused) {
+                navigation.navigate(route.name);
+              }
             }
           };
 
@@ -230,7 +234,7 @@ export function MainTabs() {
       <Tab.Screen
         name="NewPurchase"
         component={ShoppingSessionStack}
-        options={{ title: 'Nueva compra' }}
+        options={{ title: 'Escanear' }}
       />
       <Tab.Screen
         name="History"

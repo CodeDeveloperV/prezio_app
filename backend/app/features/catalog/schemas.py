@@ -95,6 +95,11 @@ class ScanProductDetails(BaseModel):
     status: ModerationStatus
 
 
+class CatalogSearchResultRead(BaseModel):
+    product: ScanProductDetails
+    store_product: StoreProductRead | None = None
+
+
 class ScanFoundResult(BaseModel):
     status: Literal["found"] = "found"
     barcode_id: int  # lets the client call POST /catalog/barcodes/{barcode_id}/report ("Producto incorrecto")

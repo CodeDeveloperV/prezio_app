@@ -1,7 +1,10 @@
-import { Card, Text } from 'tamagui';
+import { Text, YStack } from 'tamagui';
 
+import { DEFAULT_ICON_STROKE_WIDTH, IconChartLine } from '../../../app/theme/icons';
+import { colorTokens } from '../../../app/theme/tokens';
 import { LineChart } from '../../../shared/components/charts/LineChart';
 import { formatMoney, formatMonthLabel, monthSortKey } from '../utils/format';
+import { DashboardCard } from './DashboardCard';
 
 import type { MonthlySummary } from '@prezio/shared-types';
 
@@ -21,15 +24,7 @@ export function SpendTrendChart({ monthlyHistory }: SpendTrendChartProps) {
   const hasSpend = points.some((point) => point.y > 0);
 
   return (
-    <Card
-      elevation={2}
-      backgroundColor="$surface"
-      borderWidth={1}
-      borderColor="$borderColor"
-      borderRadius="$4"
-      padding="$5"
-      gap="$3"
-    >
+    <DashboardCard>
       <Text fontFamily="$heading" fontSize="$md" color="$color">
         Gasto mensual (últimos {monthlyHistory.length} meses)
       </Text>
@@ -40,10 +35,13 @@ export function SpendTrendChart({ monthlyHistory }: SpendTrendChartProps) {
           formatYLabel={(y) => formatMoney(y)}
         />
       ) : (
-        <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-          Todavía no hay suficiente historial de compras para graficar.
-        </Text>
+        <YStack alignItems="center" gap="$2" paddingVertical="$2">
+          <IconChartLine color={colorTokens.textSecondary} size={28} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+          <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
+            Todavía no hay suficiente historial de compras para graficar.
+          </Text>
+        </YStack>
       )}
-    </Card>
+    </DashboardCard>
   );
 }

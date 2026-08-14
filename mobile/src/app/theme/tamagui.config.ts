@@ -55,6 +55,7 @@ const bodyFont = createFont({
   color: {
     primary: colorTokens.primary,
     primaryPress: colorTokens.primaryPress,
+    primaryText: colorTokens.primaryText,
     background: colorTokens.background,
     backgroundHover: colorTokens.backgroundHover,
     surface: colorTokens.surface,
@@ -79,6 +80,7 @@ const lightTheme = {
   colorSecondary: tokens.color.textSecondary,
   primary: tokens.color.primary,
   primaryPress: tokens.color.primaryPress,
+  primaryText: tokens.color.primaryText,
   borderColor: tokens.color.border,
   borderColorHover: tokens.color.border,
   borderColorPress: tokens.color.border,
@@ -97,6 +99,9 @@ const darkTheme = {
   colorSecondary: tokens.color.textSecondary,
   primary: tokens.color.primary,
   primaryPress: tokens.color.primaryPress,
+  // Dark surfaces already give `primary` (the brand green) comfortable contrast,
+  // so the light-theme-only darkened text variant isn't needed here.
+  primaryText: tokens.color.primary,
   borderColor: '#1E293B',
   borderColorHover: '#1E293B',
   borderColorPress: '#1E293B',

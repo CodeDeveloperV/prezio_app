@@ -25,6 +25,14 @@ class ShoppingList(Base):
     # dropped connection -- same pattern as ShoppingListItem.client_request_id below.
     client_request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # The branch this shopping session is currently happening at, set explicitly via
+    # ShoppingListService.set_active_branch (see mobile's branch picker). Nullable -- most lists
+    # never set one, e.g. collaborative planning lists with no single physical trip. Read at the
+    # moment an item is checked to snapshot ShoppingListItem.store_branch_id/price_at_check; never
+    # itself used as a historical record once that snapshot is taken.
+    active_store_branch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("store_branches.id"), nullable=True, index=True
+    )
 
     items: Mapped[list["ShoppingListItem"]] = relationship(back_populates="shopping_list")
     members: Mapped[list["ShoppingListMember"]] = relationship(back_populates="shopping_list")
@@ -37,7 +45,7 @@ class ShoppingListItem(Base):
     shopping_list_id: Mapped[int] = mapped_column(ForeignKey("shopping_lists.id"), index=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     quantity: Mapped[int] = mapped_column(default=1)
-    checked: Mapped[bool] = mapped_column(default=False)
+    checked: Mapped[bool] = mapped_column(default=False, index=True)
     added_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     # Optimistic concurrency, same pattern as StoreProduct.version (pricing): every mutating
     # update is an atomic `UPDATE ... WHERE id = ? AND version = ?`.
@@ -47,10 +55,20 @@ class ShoppingListItem(Base):
     # creating a duplicate. Nullable/unindexed-unique on purpose -- most clients won't set it.
     client_request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Snapshot taken the moment `checked` transitions False -> True; treated as this item's
-    # "purchase" signal for dashboard analytics (see backend/app/features/dashboard). Both are
-    # cleared back to null if the item is unchecked, since there's no separate purchase record.
-    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # "purchase" signal for dashboard/analytics (see backend/app/features/dashboard and
+    # backend/app/features/analytics). Both are cleared back to null if the item is unchecked,
+    # since there's no separate purchase record.
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     price_at_check: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Snapshot of the shopping list's `active_store_branch_id` at the exact moment this item was
+    # checked (see ShoppingListService._cheapest_current_price's replacement, `_price_at_branch`).
+    # Deliberately NOT a live FK to "wherever the list's branch is now" -- if the list's active
+    # branch changes later this historical attribution must not move with it. Null for items
+    # checked before this column existed, or checked while the list had no active branch selected;
+    # analytics reports these as "unattributed" rather than guessing.
+    store_branch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("store_branches.id"), nullable=True, index=True
+    )
 
     shopping_list: Mapped["ShoppingList"] = relationship(back_populates="items")
 

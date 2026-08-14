@@ -6,6 +6,8 @@ from app.features.dashboard.repository import DashboardRepository
 from app.features.dashboard.schemas import DashboardSummary, LastPurchase, MonthlySummary, MostPurchasedProduct
 from app.features.shopping_lists.models import ShoppingListItem
 from app.features.users.repository import UserProfileRepository
+from app.shared.time_utils import as_aware_utc as _as_aware_utc
+from app.shared.time_utils import month_start as _month_start
 
 # How far back a checked item's "would-have-paid" reference price is allowed to come from, used
 # to compute "ahorro mensual". A judgment call (see README "Dashboard inteligente"): Prezio has
@@ -14,21 +16,6 @@ from app.features.users.repository import UserProfileRepository
 REFERENCE_PRICE_WINDOW_DAYS = 90
 MOST_PURCHASED_LIMIT = 5
 HISTORY_MONTHS = 6
-
-
-def _as_aware_utc(value: datetime) -> datetime:
-    """SQLite (used in tests) drops tzinfo on round-trip even for `DateTime(timezone=True)`
-    columns; Postgres in production does not. Normalizing here mirrors the exact pattern used by
-    PriceAlertEvaluator for the same reason."""
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-
-
-def _month_start(dt: datetime, offset: int = 0) -> datetime:
-    year = dt.year
-    month = dt.month + offset
-    year += (month - 1) // 12
-    month = (month - 1) % 12 + 1
-    return datetime(year, month, 1, tzinfo=timezone.utc)
 
 
 class DashboardService:

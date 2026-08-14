@@ -49,6 +49,7 @@ function makeListDto(overrides: Partial<ShoppingListDTO> & { id: number; name: s
     name: overrides.name,
     status: overrides.status ?? 'active',
     created_at: overrides.created_at ?? '2026-01-01T00:00:00Z',
+    active_store_branch_id: overrides.active_store_branch_id ?? null,
   };
 }
 
@@ -63,6 +64,7 @@ function makeItemDto(overrides: Partial<ShoppingListItemDTO> & { id: number }): 
     version: overrides.version ?? 1,
     checked_at: overrides.checked_at ?? null,
     price_at_check: overrides.price_at_check ?? null,
+    store_branch_id: overrides.store_branch_id ?? null,
   };
 }
 

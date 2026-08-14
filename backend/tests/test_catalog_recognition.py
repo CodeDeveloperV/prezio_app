@@ -154,6 +154,37 @@ async def test_scan_unknown_barcode_with_no_candidates_returns_not_found(async_c
     assert response.json()["status"] == "not_found"
 
 
+async def test_catalog_search_returns_matching_product_and_branch_price(async_client: AsyncClient) -> None:
+    _, branch_id = await seed_branch(async_client)
+    category_id = await seed_category(async_client)
+    brand_id = await seed_brand(async_client, name="Estrella")
+    product_id = await seed_product(
+        async_client,
+        canonical_name="Leche Entera 1L",
+        brand_id=brand_id,
+        category_id=category_id,
+    )
+
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        session.add(StoreProduct(store_branch_id=branch_id, product_id=product_id, current_price="2.50", version=1))
+        await session.commit()
+
+    token = await get_access_token(async_client)
+    response = await async_client.get(
+        "/catalog/products/search",
+        params={"q": "Estrella", "store_branch_id": branch_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["product"]["canonical_name"] == "Leche Entera 1L"
+    assert body[0]["product"]["brand_name"] == "Estrella"
+    assert body[0]["store_product"]["current_price"] == "2.50"
+
+
 async def test_attach_barcode_to_existing_product_creates_only_barcode(async_client: AsyncClient) -> None:
     _, branch_id = await seed_branch(async_client)
     product_id = await seed_product(async_client, canonical_name="Leche Entera Estrella 1L")
