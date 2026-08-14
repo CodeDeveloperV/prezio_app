@@ -727,3 +727,50 @@ export interface AnalyticsSummary {
   personal_inflation: PersonalInflation;
   favorite_products: FavoriteProducts;
 }
+
+// --- B2B organizations (web-admin portal) ------------------------------------------------------
+// "Organization" on the wire is the existing Store row -- there is no separate organizations
+// table. Branch access is a scope, not a role: ORGANIZATION_ADMIN implicitly has every branch,
+// MANAGER/EMPLOYEE only the branches explicitly granted via branch_ids.
+
+export type OrganizationRole = 'organization_admin' | 'manager' | 'employee';
+
+export type OrganizationMemberStatus = 'active' | 'inactive';
+
+export interface OrganizationRead {
+  id: number;
+  name: string;
+  country: string;
+}
+
+export interface OrganizationMemberRead {
+  id: number;
+  store_id: number;
+  user_id: number;
+  user_email: string;
+  role: OrganizationRole;
+  status: OrganizationMemberStatus;
+  branch_ids: number[];
+  joined_at: ISODateTime;
+}
+
+// GET /b2b/memberships/me -- one row per organization the current user belongs to, lets the
+// portal show an organization switcher and resolve role/branch scope right after login.
+export interface MyMembershipRead {
+  organization: OrganizationRead;
+  role: OrganizationRole;
+  status: OrganizationMemberStatus;
+  branch_ids: number[];
+}
+
+export interface OrganizationMemberInvite {
+  email: string;
+  role: OrganizationRole;
+  branch_ids?: number[];
+}
+
+export interface OrganizationMemberUpdate {
+  role?: OrganizationRole;
+  status?: OrganizationMemberStatus;
+  branch_ids?: number[];
+}
