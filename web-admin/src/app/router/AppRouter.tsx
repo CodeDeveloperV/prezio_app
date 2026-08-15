@@ -6,6 +6,7 @@ import { CatalogProductsPage } from '@/features/catalog/screens/CatalogProductsP
 import { BranchesPage } from '@/features/organizations/screens/BranchesPage';
 import { MembersPage } from '@/features/organizations/screens/MembersPage';
 import { PricingPage } from '@/features/pricing/screens/PricingPage';
+import { PromotionsPage } from '@/features/promotions/screens/PromotionsPage';
 import { ComingSoonPage } from '@/shared/components/ComingSoonPage';
 import { AppShell } from '../layout/AppShell';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -22,7 +23,7 @@ export function AppRouter() {
           <Route path="catalog" element={<CatalogProductsPage />} />
           <Route path="catalog/products/:productId" element={<CatalogProductDetailPage />} />
           <Route path="pricing" element={<PricingPage />} />
-          <Route path="promotions" element={<ComingSoonPage title="Promociones" />} />
+          <Route path="promotions" element={<PromotionsPage />} />
           <Route path="coupons" element={<ComingSoonPage title="Cupones" />} />
           <Route path="reports" element={<ComingSoonPage title="Reportes" />} />
           <Route path="members" element={<MembersPage />} />

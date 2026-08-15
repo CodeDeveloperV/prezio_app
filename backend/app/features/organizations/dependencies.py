@@ -15,6 +15,12 @@ from app.features.organizations.repository import OrganizationMemberBranchReposi
 from app.features.organizations.service import OrganizationMembershipService
 from app.features.pricing.repository import PriceConfirmationRepository, PriceHistoryRepository, StoreProductRepository
 from app.features.pricing.service import PricingService
+from app.features.promotions.repository import (
+    PromotionBranchRepository,
+    PromotionProductRepository,
+    PromotionRepository,
+)
+from app.features.promotions.service import PromotionService
 from app.features.reputation.repository import ReputationEventRepository
 from app.features.reputation.service import ReputationService
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
@@ -65,6 +71,21 @@ def get_b2b_pricing_service(
         PriceHistoryRepository(db),
         ProductRepository(db),
         CatalogService(CategoryRepository(db), ProductRepository(db)),
+    )
+
+
+def get_promotion_service(
+    db: AsyncSession = Depends(get_db),
+    membership: OrganizationMembershipService = Depends(get_membership_service),
+) -> PromotionService:
+    return PromotionService(
+        db,
+        PromotionRepository(db),
+        PromotionBranchRepository(db),
+        PromotionProductRepository(db),
+        membership,
+        ProductRepository(db),
+        StoreProductRepository(db),
     )
 
 

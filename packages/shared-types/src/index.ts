@@ -929,3 +929,78 @@ export interface B2BBatchUpdateResponse {
   conflicts: B2BPriceConflictRead[];
   failed: B2BBatchFailedItem[];
 }
+
+// Promotions is a domain separate from Pricing -- never mutates StoreProduct.current_price or
+// PriceHistory (see backend/app/features/promotions). Only DRAFT/PUBLISHED/CANCELLED are
+// persisted; SCHEDULED/ACTIVE/EXPIRED are derived from start_at/end_at at read time.
+export type PromotionType = 'percentage_discount' | 'fixed_discount' | 'special_price' | 'buy_x_get_y';
+
+export type PromotionStatus = 'draft' | 'published' | 'cancelled';
+
+export type PromotionDisplayStatus = 'draft' | 'scheduled' | 'active' | 'expired' | 'cancelled';
+
+export interface PromotionCreate {
+  name: string;
+  description?: string | null;
+  type: PromotionType;
+  priority?: number | null;
+  percentage_value?: string | null;
+  fixed_discount_value?: string | null;
+  special_price?: string | null;
+  buy_quantity?: number | null;
+  pay_quantity?: number | null;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+}
+
+export type PromotionUpdate = PromotionCreate;
+
+export interface PromotionRead {
+  id: number;
+  store_id: number;
+  name: string;
+  description: string | null;
+  type: PromotionType;
+  status: PromotionStatus;
+  display_status: PromotionDisplayStatus;
+  priority: number;
+  percentage_value: string | null;
+  fixed_discount_value: string | null;
+  special_price: string | null;
+  buy_quantity: number | null;
+  pay_quantity: number | null;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+  created_by: number | null;
+  updated_by: number | null;
+  published_by: number | null;
+  published_at: ISODateTime | null;
+  cancelled_by: number | null;
+  cancelled_at: ISODateTime | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+export interface PromotionListItemRead {
+  id: number;
+  name: string;
+  type: PromotionType;
+  status: PromotionStatus;
+  display_status: PromotionDisplayStatus;
+  priority: number;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+}
+
+export interface PromotionListRead {
+  items: PromotionListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
