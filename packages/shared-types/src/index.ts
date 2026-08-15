@@ -1004,3 +1004,96 @@ export interface PromotionListRead {
   page: number;
   page_size: number;
 }
+
+// Coupon is a domain separate from Promotion (Fase 10.10) -- a new `coupons` table, no FK to
+// promotions. A coupon's benefit is conditioned on presenting/using a `code`; eligibility,
+// claim, redemption counting, and per-user limits enforcement are NOT built in 10.10 (reserved
+// for EPIC 11) -- `max_redemptions_total`/`max_redemptions_per_user` are persisted but not
+// enforced or counted here. Only DRAFT/PUBLISHED/CANCELLED are persisted; SCHEDULED/ACTIVE/
+// EXPIRED are derived from start_at/end_at at read time, same as Promotion.
+export type CouponType = 'percentage_discount' | 'fixed_amount';
+
+export type CouponStatus = 'draft' | 'published' | 'cancelled';
+
+export type CouponDisplayStatus = 'draft' | 'scheduled' | 'active' | 'expired' | 'cancelled';
+
+export interface CouponCreate {
+  name: string;
+  description?: string | null;
+  code: string;
+  type: CouponType;
+  percentage_value?: string | null;
+  fixed_amount_value?: string | null;
+  applies_to_entire_purchase: boolean;
+  applies_to_all_branches: boolean;
+  minimum_purchase_amount?: string | null;
+  maximum_discount_amount?: string | null;
+  max_redemptions_total?: number | null;
+  max_redemptions_per_user?: number | null;
+  is_stackable: boolean;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+}
+
+export type CouponUpdate = CouponCreate;
+
+export interface CouponRead {
+  id: number;
+  store_id: number;
+  name: string;
+  description: string | null;
+  code: string;
+  type: CouponType;
+  status: CouponStatus;
+  display_status: CouponDisplayStatus;
+  percentage_value: string | null;
+  fixed_amount_value: string | null;
+  applies_to_entire_purchase: boolean;
+  applies_to_all_branches: boolean;
+  minimum_purchase_amount: string | null;
+  maximum_discount_amount: string | null;
+  max_redemptions_total: number | null;
+  max_redemptions_per_user: number | null;
+  is_stackable: boolean;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+  created_by: number | null;
+  updated_by: number | null;
+  published_by: number | null;
+  published_at: ISODateTime | null;
+  cancelled_by: number | null;
+  cancelled_at: ISODateTime | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+export interface CouponListItemRead {
+  id: number;
+  name: string;
+  code: string;
+  type: CouponType;
+  status: CouponStatus;
+  display_status: CouponDisplayStatus;
+  percentage_value: string | null;
+  fixed_amount_value: string | null;
+  applies_to_entire_purchase: boolean;
+  applies_to_all_branches: boolean;
+  max_redemptions_total: number | null;
+  max_redemptions_per_user: number | null;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+  created_by: number | null;
+}
+
+export interface CouponListRead {
+  items: CouponListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '@/features/auth/screens/LoginPage';
 import { CatalogProductDetailPage } from '@/features/catalog/screens/CatalogProductDetailPage';
 import { CatalogProductsPage } from '@/features/catalog/screens/CatalogProductsPage';
+import { CouponsPage } from '@/features/coupons/screens/CouponsPage';
 import { BranchesPage } from '@/features/organizations/screens/BranchesPage';
 import { MembersPage } from '@/features/organizations/screens/MembersPage';
 import { PricingPage } from '@/features/pricing/screens/PricingPage';
@@ -24,7 +25,7 @@ export function AppRouter() {
           <Route path="catalog/products/:productId" element={<CatalogProductDetailPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
-          <Route path="coupons" element={<ComingSoonPage title="Cupones" />} />
+          <Route path="coupons" element={<CouponsPage />} />
           <Route path="reports" element={<ComingSoonPage title="Reportes" />} />
           <Route path="members" element={<MembersPage />} />
         </Route>
