@@ -84,7 +84,7 @@ export function DashboardScreen() {
         activeSessionName={activeShoppingList?.name ?? null}
         activeSessionMetric={activeShoppingList !== null ? activeSessionMetric : null}
         onPressPrimaryAction={() => {
-          navigation.navigate('NewPurchase', { screen: 'Scan', params: {} });
+          navigation.navigate('NewPurchase', { screen: 'BranchSelect', params: {} });
         }}
       />
 

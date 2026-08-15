@@ -98,6 +98,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
     fromCache = false,
     fromSearch = false,
     priceOffers = [],
+    scanFlow = 'quick',
   } = route.params;
   const [addedToActiveList, setAddedToActiveList] = useState(false);
   const [showNoActivePurchaseModal, setShowNoActivePurchaseModal] = useState(false);
@@ -120,7 +121,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
     : heroOffer
       ? offerLabel(heroOffer)
       : null;
-  const isQuickScan = storeBranchId == null;
+  const isQuickScan = scanFlow === 'quick';
 
   const addToActiveListMutation = useMutation({
     mutationFn: async () => {
@@ -143,7 +144,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
       return;
     }
     reportBarcodeMutation.mutate(barcodeId, {
-      onSuccess: () => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId }),
+      onSuccess: () => navigation.replace('Scan', { storeBranchId: storeBranchId ?? undefined, scanFlow }),
     });
   };
 
@@ -448,7 +449,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
           </XStack>
         </Card>
 
-        <Button unstyled onPress={() => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId })}>
+        <Button unstyled onPress={() => navigation.replace('Scan', { storeBranchId: storeBranchId ?? undefined, scanFlow })}>
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary" textAlign="center">
             Escanear otro producto
           </Text>

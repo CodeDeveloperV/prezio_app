@@ -32,6 +32,7 @@ type RecentScanEntry = {
   id: string;
   scannedAt: string;
   source: 'barcode' | 'manual' | 'cached';
+  scanFlow: 'quick' | 'purchase';
   barcodeId: number | null;
   storeBranchId: number | null;
   barcode: string | null;
@@ -123,15 +124,21 @@ function formatShortDate(iso: string): string {
   });
 }
 
-function sourceLabel(source: RecentScanEntry['source']): string {
-  switch (source) {
-    case 'manual':
-      return 'Búsqueda manual';
-    case 'cached':
-      return 'Sin conexión';
-    default:
-      return 'Escaneo rápido';
+function sourceLabel(entry: Pick<RecentScanEntry, 'source' | 'scanFlow'>): string {
+  if (entry.source === 'manual') {
+    return 'Búsqueda manual';
   }
+  if (entry.source === 'cached') {
+    return 'Sin conexión';
+  }
+  return entry.scanFlow === 'purchase' ? 'Compra nueva' : 'Escaneo rápido';
+}
+
+function scanSubtitle(scanFlow: 'quick' | 'purchase', routeStoreBranchId: number | undefined): string {
+  if (scanFlow === 'purchase') {
+    return routeStoreBranchId != null ? 'Compra nueva con sucursal elegida' : 'Compra nueva';
+  }
+  return routeStoreBranchId != null ? 'Contexto de sucursal activo' : 'Escaneo rápido sin sucursal';
 }
 
 function TintedIconBadge({
@@ -228,7 +235,7 @@ function RecentScanCard({
             {entry.product.canonical_name}
           </Text>
           <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" numberOfLines={1}>
-            {sourceLabel(entry.source)}
+            {sourceLabel(entry)}
             {entry.storeBranchId != null ? ` · sucursal ${entry.storeBranchId}` : ''}
           </Text>
           <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
@@ -256,6 +263,7 @@ function RecentScanCard({
  */
 export function ScanScreen({ route, navigation }: Props) {
   const routeStoreBranchId = route.params?.storeBranchId;
+  const scanFlow = route.params?.scanFlow ?? 'quick';
   const isFocused = useIsFocused();
   const queryClient = useQueryClient();
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -306,6 +314,7 @@ export function ScanScreen({ route, navigation }: Props) {
         barcodeId: number | null;
         storeBranchId: number | null;
         source: RecentScanEntry['source'];
+        scanFlow: RecentScanEntry['scanFlow'];
         barcode?: string | null;
         fromSearch?: boolean;
         fromCache?: boolean;
@@ -315,6 +324,7 @@ export function ScanScreen({ route, navigation }: Props) {
         id: `${Date.now()}-${payload.product.id}-${payload.source}`,
         scannedAt: new Date().toISOString(),
         source: payload.source,
+        scanFlow: payload.scanFlow,
         barcodeId: payload.barcodeId,
         storeBranchId: payload.storeBranchId,
         barcode: payload.barcode ?? null,
@@ -331,6 +341,7 @@ export function ScanScreen({ route, navigation }: Props) {
         fromSearch: payload.fromSearch,
         fromCache: payload.fromCache,
         priceOffers: payload.priceOffers,
+        scanFlow: payload.scanFlow,
       });
     },
     [navigation, pushRecentScan],
@@ -367,11 +378,13 @@ export function ScanScreen({ route, navigation }: Props) {
             storeProduct: result.store_product,
             priceOffers: result.price_offers,
             source: 'barcode',
+            scanFlow,
             barcode: value,
           });
         } else if (result.status === 'needs_disambiguation') {
           navigation.replace('ScanDisambiguation', {
             storeBranchId: routeStoreBranchId ?? undefined,
+            scanFlow,
             barcode: value,
             barcodeType: 'other',
             candidates: result.candidates,
@@ -379,6 +392,7 @@ export function ScanScreen({ route, navigation }: Props) {
         } else if (result.status === 'conflict') {
           navigation.replace('ScanDisambiguation', {
             storeBranchId: routeStoreBranchId ?? undefined,
+            scanFlow,
             barcode: value,
             barcodeType: 'other',
             candidates: result.candidates.map((candidate) => ({
@@ -390,6 +404,7 @@ export function ScanScreen({ route, navigation }: Props) {
         } else {
           navigation.replace('CreateProduct', {
             storeBranchId: routeStoreBranchId ?? undefined,
+            scanFlow,
             barcode: value,
             barcodeType: 'other',
           });
@@ -450,6 +465,7 @@ export function ScanScreen({ route, navigation }: Props) {
                 : null,
               priceOffers: [],
               source: 'cached',
+              scanFlow,
               barcode: value,
               fromCache: true,
             });
@@ -462,7 +478,7 @@ export function ScanScreen({ route, navigation }: Props) {
         hasSubmittedRef.current = false;
       }
     },
-    [navigation, openScanResult, routeStoreBranchId, scanMutation],
+    [navigation, openScanResult, routeStoreBranchId, scanFlow, scanMutation],
   );
 
   const barcodeScannerOutput = useBarcodeScannerOutput({
@@ -532,19 +548,18 @@ export function ScanScreen({ route, navigation }: Props) {
       );
     }
 
+    if (mode === 'scan' && scanFlow === 'purchase') {
+      return null;
+    }
+
     return (
       <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
         <XStack alignItems="center" gap="$3">
-          <YStack
-            width={48}
-            height={48}
-            borderRadius="$full"
+          <TintedIconBadge
+            size={48}
             backgroundColor="rgba(34, 197, 94, 0.10)"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <IconScan color={colorTokens.primary} size={24} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-          </YStack>
+            icon={<IconScan color={colorTokens.primary} size={24} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          />
           <YStack flex={1} gap="$1">
             <Text fontFamily="$heading" fontSize="$md" color="$color">
               Escaneo rápido
@@ -556,7 +571,7 @@ export function ScanScreen({ route, navigation }: Props) {
         </XStack>
       </Card>
     );
-  }, [mode]);
+  }, [mode, scanFlow]);
 
   const scanHistory = recentScans.length > 0 ? (
     <YStack gap="$2">
@@ -573,6 +588,7 @@ export function ScanScreen({ route, navigation }: Props) {
               fromSearch: entry.source === 'manual',
               fromCache: entry.source === 'cached',
               priceOffers: entry.priceOffers,
+              scanFlow: entry.scanFlow,
             })
           }
         />
@@ -626,21 +642,17 @@ export function ScanScreen({ route, navigation }: Props) {
                   storeProduct: item.store_product,
                   priceOffers: [],
                   source: 'manual',
+                  scanFlow,
                   fromSearch: true,
                 })
               }
             >
               <XStack alignItems="center" gap="$3" flex={1}>
-                <YStack
-                  width={42}
-                  height={42}
-                  borderRadius="$full"
+                <TintedIconBadge
+                  size={42}
                   backgroundColor="rgba(34, 197, 94, 0.08)"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-                </YStack>
+                  icon={<IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+                />
                 <YStack flex={1} gap="$0.5">
                   <Text fontFamily="$heading" fontSize="$sm" color="$color" textAlign="left" numberOfLines={2}>
                     {item.product.canonical_name}
@@ -730,9 +742,7 @@ export function ScanScreen({ route, navigation }: Props) {
         title="Escanear producto"
         subtitle={
           mode === 'scan'
-            ? routeStoreBranchId != null
-              ? 'Contexto de sucursal activo'
-              : 'Escaneo rápido sin sucursal'
+            ? scanSubtitle(scanFlow, routeStoreBranchId)
             : mode === 'history'
               ? 'Revisá los últimos escaneos de esta sesión'
               : 'Buscá por nombre, marca, presentación o código'
@@ -901,6 +911,7 @@ export function ScanScreen({ route, navigation }: Props) {
                   fromSearch: latestScan.source === 'manual',
                   fromCache: latestScan.source === 'cached',
                   priceOffers: latestScan.priceOffers,
+                  scanFlow: latestScan.scanFlow,
                 })
               }
             />

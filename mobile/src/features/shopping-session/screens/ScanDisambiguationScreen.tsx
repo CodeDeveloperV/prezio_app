@@ -78,7 +78,7 @@ function CandidateRow({
  * one of the ranked candidates (attaches only a new ProductBarcode) or say none match
  * (falls through to CreateProduct, a brand-new Product in PENDING). */
 export function ScanDisambiguationScreen({ route, navigation }: Props) {
-  const { storeBranchId, barcode, barcodeType, candidates } = route.params;
+  const { storeBranchId, scanFlow = 'quick', barcode, barcodeType, candidates } = route.params;
   const attachBarcodeMutation = useAttachBarcodeMutation();
   const [selectedCandidateId, setSelectedCandidateId] = useState<number | null>(null);
 
@@ -90,7 +90,7 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
           request: { barcode, barcode_type: barcodeType },
         },
         {
-          onSuccess: () => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId }),
+          onSuccess: () => navigation.replace('Scan', { storeBranchId: storeBranchId ?? undefined, scanFlow }),
         },
       );
   };
@@ -153,7 +153,14 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
           <Button
             backgroundColor="$primary"
             color="$white"
-            onPress={() => navigation.replace('CreateProduct', storeBranchId == null ? { barcode, barcodeType } : { storeBranchId, barcode, barcodeType })}
+            onPress={() =>
+              navigation.replace(
+                'CreateProduct',
+                storeBranchId == null
+                  ? { barcode, barcodeType, scanFlow }
+                  : { storeBranchId, barcode, barcodeType, scanFlow },
+              )
+            }
           >
             Crear producto
           </Button>

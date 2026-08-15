@@ -35,19 +35,22 @@ export type ComparisonStackParamList = {
 // disambiguation/creation.
 export type ShoppingSessionStackParamList = {
   BranchSelect: { pendingScan?: ScanResultProductContext } | undefined;
-  Scan: { storeBranchId?: number } | undefined;
+  Scan: { storeBranchId?: number; scanFlow?: 'quick' | 'purchase' } | undefined;
   ScanResult: ScanResultProductContext & {
     storeBranchId?: number | null;
     priceOffers?: ScanPriceOffer[];
+    scanFlow?: 'quick' | 'purchase';
   };
   ScanDisambiguation: {
     storeBranchId?: number | null;
+    scanFlow?: 'quick' | 'purchase';
     barcode: string;
     barcodeType: BarcodeType;
     candidates: ProductMatchCandidate[];
   };
   CreateProduct: {
     storeBranchId?: number | null;
+    scanFlow?: 'quick' | 'purchase';
     barcode: string;
     barcodeType: BarcodeType;
   };
@@ -62,6 +65,7 @@ export type ScanResultProductContext = {
   storeProduct: StoreProductRead | null;
   priceOffers?: ScanPriceOffer[];
   fromSearch?: boolean;
+  scanFlow?: 'quick' | 'purchase';
   // True when this result came from the offline cache (Epic 14) instead of a live lookup --
   // gates the online-only actions (confirm match, price update, report, alerts) and shows the
   // price as a snapshot rather than a guaranteed-current value.

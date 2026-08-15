@@ -37,30 +37,38 @@ function StepChip({ children }: { children: string }) {
 export function BranchSelectScreen({ route, navigation }: Props) {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const storesQuery = useStoresQuery();
   const branchesQuery = useStoreBranchesQuery(selectedStore?.id);
   const queryClient = useQueryClient();
   const stores = (storesQuery.data ?? []) as Store[];
   const selectedStoreId = selectedStore?.id ?? null;
   const pendingScan = route.params?.pendingScan;
+  const canStartPurchase = selectedStore !== null && selectedBranchId !== null && !isSubmitting;
 
   const handleStartPurchase = async () => {
     const branchId = selectedBranchId;
-    if (!pendingScan) {
-      navigation.replace('Scan', branchId == null ? undefined : { storeBranchId: branchId });
+    if (branchId == null) {
       return;
     }
 
-    const shoppingList = await createShoppingList({ name: 'Compra de hoy' });
-    if (branchId != null) {
+    setIsSubmitting(true);
+    try {
+      const shoppingList = await createShoppingList({ name: 'Compra de hoy' });
       await setShoppingListActiveBranch(shoppingList.id, { store_branch_id: branchId });
+
+      if (pendingScan) {
+        await addShoppingListItem(shoppingList.id, {
+          product_id: pendingScan.product.id,
+          quantity: 1,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+      navigation.replace('Scan', { storeBranchId: branchId, scanFlow: 'purchase' });
+    } finally {
+      setIsSubmitting(false);
     }
-    await addShoppingListItem(shoppingList.id, {
-      product_id: pendingScan.product.id,
-      quantity: 1,
-    });
-    queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
-    navigation.replace('Scan', branchId == null ? undefined : { storeBranchId: branchId });
   };
 
   return (
@@ -94,7 +102,7 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                 ¿En qué súper vas a comprar hoy?
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Podés elegirlo ahora o saltarlo y definirlo después.
+                Elegí la tienda y la sucursal antes de empezar a escanear.
               </Text>
             </YStack>
           </XStack>
@@ -143,7 +151,10 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                   borderRadius="$4"
                   padding="$4"
                   minHeight={68}
-                  onPress={() => setSelectedStore(store)}
+                  onPress={() => {
+                    setSelectedStore(store);
+                    setSelectedBranchId(null);
+                  }}
                 >
                   <XStack alignItems="center" gap="$3" flex={1}>
                     <YStack
@@ -192,7 +203,10 @@ export function BranchSelectScreen({ route, navigation }: Props) {
               minHeight={88}
               justifyContent="space-between"
               alignItems="center"
-              onPress={() => setSelectedStore(null)}
+              onPress={() => {
+                setSelectedStore(null);
+                setSelectedBranchId(null);
+              }}
             >
               <XStack alignItems="center" gap="$3" flex={1}>
                 <YStack
@@ -304,17 +318,16 @@ export function BranchSelectScreen({ route, navigation }: Props) {
             Empezar compra
           </Text>
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-            La sucursal elegida define el contexto del escaneo. Si no elegís una, la podrás definir después.
+            La sucursal elegida define el contexto del escaneo.
           </Text>
 
-          <Button backgroundColor="$primary" color="$white" onPress={() => handleStartPurchase().catch(() => undefined)}>
-            {pendingScan ? 'Iniciar compra' : 'Escanear producto'}
-          </Button>
-
-          <Button unstyled onPress={() => navigation.replace('Scan')}>
-            <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">
-              Omitir, elegir después
-            </Text>
+          <Button
+            backgroundColor="$primary"
+            color="$white"
+            disabled={!canStartPurchase}
+            onPress={() => handleStartPurchase().catch(() => undefined)}
+          >
+            {isSubmitting ? <ActivityIndicator color={colorTokens.white} /> : 'Escanear'}
           </Button>
         </Card>
       </YStack>

@@ -49,7 +49,7 @@ function CategoryPill({
 /** No existing candidate matched: collect the minimum fields to create a brand-new Product
  * (status PENDING) with the scanned barcode attached automatically. */
 export function CreateProductScreen({ route, navigation }: Props) {
-  const { storeBranchId, barcode, barcodeType } = route.params;
+  const { storeBranchId, scanFlow = 'quick', barcode, barcodeType } = route.params;
   const [imageUrl, setImageUrl] = useState('');
   const [canonicalName, setCanonicalName] = useState('');
   const [brandName, setBrandName] = useState('');
@@ -76,7 +76,7 @@ export function CreateProductScreen({ route, navigation }: Props) {
         barcode_type: barcodeType,
       },
       {
-        onSuccess: () => navigation.replace('Scan', storeBranchId == null ? undefined : { storeBranchId }),
+        onSuccess: () => navigation.replace('Scan', { storeBranchId: storeBranchId ?? undefined, scanFlow }),
       },
     );
   };
