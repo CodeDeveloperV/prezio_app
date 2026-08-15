@@ -23,6 +23,8 @@ from app.features.promotions.repository import (
     PromotionRepository,
 )
 from app.features.promotions.service import PromotionService
+from app.features.reports.repository import ReportRepository
+from app.features.reports.service import ReportService
 from app.features.reputation.repository import ReputationEventRepository
 from app.features.reputation.service import ReputationService
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
@@ -102,6 +104,20 @@ def get_coupon_service(
         CouponProductRepository(db),
         membership,
         ProductRepository(db),
+    )
+
+
+def get_report_service(
+    db: AsyncSession = Depends(get_db),
+    membership: OrganizationMembershipService = Depends(get_membership_service),
+) -> ReportService:
+    return ReportService(
+        db,
+        ReportRepository(db),
+        membership,
+        ProductRepository(db),
+        StoreProductRepository(db),
+        StoreBranchRepository(db),
     )
 
 

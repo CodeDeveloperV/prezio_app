@@ -12,6 +12,7 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import { IconClockHour4, IconEdit } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { useBranches } from '@/features/organizations/hooks/useBranches';
 import { useActiveMembership } from '@/shared/store/authStore';
@@ -42,7 +43,10 @@ export function PricingPage() {
   const activeMembership = useActiveMembership();
   const storeId = activeMembership?.organization.id ?? null;
 
-  const [filters, setFilters] = useState<PricingFilters>({});
+  // Deep-linked from a Report's "Ir a Precios a corregir" action (Fase 10.11), which passes
+  // the reported item's barcode so the operator lands on it pre-filtered.
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<PricingFilters>({ barcode: searchParams.get('barcode') ?? undefined });
   const [staleOnly, setStaleOnly] = useState(false);
   const pricingQuery = usePricing(storeId, {
     ...filters,

@@ -8,6 +8,7 @@ import { BranchesPage } from '@/features/organizations/screens/BranchesPage';
 import { MembersPage } from '@/features/organizations/screens/MembersPage';
 import { PricingPage } from '@/features/pricing/screens/PricingPage';
 import { PromotionsPage } from '@/features/promotions/screens/PromotionsPage';
+import { ReportsPage } from '@/features/reports/screens/ReportsPage';
 import { ComingSoonPage } from '@/shared/components/ComingSoonPage';
 import { AppShell } from '../layout/AppShell';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -26,7 +27,7 @@ export function AppRouter() {
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
           <Route path="coupons" element={<CouponsPage />} />
-          <Route path="reports" element={<ComingSoonPage title="Reportes" />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="members" element={<MembersPage />} />
         </Route>
       </Route>

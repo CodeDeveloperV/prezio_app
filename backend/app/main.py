@@ -20,6 +20,8 @@ from app.features.organizations.pricing_router import router as organizations_pr
 from app.features.organizations.router import router as organizations_router
 from app.features.pricing.router import router as pricing_router
 from app.features.promotions.router import router as promotions_router
+from app.features.reports.router import end_user_router as reports_end_user_router
+from app.features.reports.router import router as reports_router
 from app.features.reputation.router import router as reputation_router
 from app.features.shopping_lists.router import invitations_router as shopping_list_invitations_router
 from app.features.shopping_lists.router import router as shopping_lists_router
@@ -67,6 +69,8 @@ app.include_router(organizations_catalog_router)
 app.include_router(organizations_pricing_router)
 app.include_router(promotions_router)
 app.include_router(coupons_router)
+app.include_router(reports_router)
+app.include_router(reports_end_user_router)
 
 
 @app.get("/health")

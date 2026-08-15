@@ -1097,3 +1097,118 @@ export interface CouponListRead {
   page: number;
   page_size: number;
 }
+
+// Report is a domain fully separate from Promotion/Coupon and from moderation's ProductMerge --
+// it models a community-reported data-quality issue (wrong info, barcode, price, availability,
+// duplicate, not-sold-here) that an organization's operators triage and resolve (Fase 10.11).
+// Individual reports about the same entity+type are never physically merged; the API groups
+// them in the read model instead (`group_report_count`/`latest_reported_at`).
+export type ReportType =
+  | 'incorrect_product_info'
+  | 'incorrect_barcode'
+  | 'duplicate_product'
+  | 'incorrect_price'
+  | 'incorrect_availability'
+  | 'product_not_sold_here'
+  | 'other';
+
+export type ReportStatus = 'open' | 'in_review' | 'resolved' | 'dismissed';
+
+export type ReportPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type ReportResolutionType =
+  | 'data_corrected'
+  | 'price_updated'
+  | 'availability_updated'
+  | 'listing_disabled'
+  | 'escalated_to_catalog_moderation'
+  | 'no_issue_found'
+  | 'duplicate_confirmed'
+  | 'other';
+
+export interface ReportActivityRead {
+  id: number;
+  actor_user_id: number | null;
+  action: string;
+  note: string | null;
+  created_at: ISODateTime;
+}
+
+export interface ReportRead {
+  id: number;
+  type: ReportType;
+  status: ReportStatus;
+  priority: ReportPriority;
+  reporter_user_id: number;
+  product_id: number | null;
+  product_name: string | null;
+  store_product_id: number | null;
+  store_branch_id: number | null;
+  branch_name: string | null;
+  barcode: string | null;
+  description: string | null;
+  reported_value: Record<string, unknown> | null;
+  current_value_snapshot: Record<string, unknown> | null;
+  assigned_to_user_id: number | null;
+  resolution_type: ReportResolutionType | null;
+  resolution_note: string | null;
+  resolved_by: number | null;
+  resolved_at: ISODateTime | null;
+  dismissed_by: number | null;
+  dismissed_at: ISODateTime | null;
+  group_report_count: number;
+  first_reported_at: ISODateTime;
+  latest_reported_at: ISODateTime;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+  activities: ReportActivityRead[];
+}
+
+export interface ReportListItemRead {
+  id: number;
+  type: ReportType;
+  status: ReportStatus;
+  priority: ReportPriority;
+  product_id: number | null;
+  product_name: string | null;
+  store_product_id: number | null;
+  store_branch_id: number | null;
+  branch_name: string | null;
+  current_price: number | null;
+  reported_price: number | null;
+  assigned_to_user_id: number | null;
+  group_report_count: number;
+  latest_reported_at: ISODateTime;
+  created_at: ISODateTime;
+}
+
+export interface ReportListRead {
+  items: ReportListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ReportSummaryRead {
+  open_count: number;
+  in_review_count: number;
+  high_priority_open_count: number;
+  resolved_this_week_count: number;
+}
+
+export interface ReportAssignRequest {
+  assigned_to_user_id?: number | null;
+}
+
+export interface ReportPriorityUpdate {
+  priority: ReportPriority;
+}
+
+export interface ReportResolveRequest {
+  resolution_type: ReportResolutionType;
+  resolution_note?: string | null;
+}
+
+export interface ReportDismissRequest {
+  resolution_note?: string | null;
+}
