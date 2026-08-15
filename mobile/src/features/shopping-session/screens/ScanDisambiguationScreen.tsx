@@ -121,7 +121,7 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
                 Encontramos varias coincidencias
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Elegí el producto correcto o creá uno nuevo si ninguno coincide.
+                Elige el producto correcto o crea uno nuevo si ninguno coincide.
               </Text>
             </YStack>
           </XStack>

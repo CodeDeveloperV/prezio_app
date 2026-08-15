@@ -38,7 +38,7 @@ export function SetActiveBranchScreen({ route, navigation }: Props) {
       <YStack gap="$4">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontSize="$lg" color="$color">
-            Elegí la sucursal
+            Elige la sucursal
           </Text>
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
             El precio de cada producto que marques como comprado se guardará según la sucursal que

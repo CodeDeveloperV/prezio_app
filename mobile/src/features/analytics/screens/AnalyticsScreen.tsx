@@ -95,7 +95,7 @@ export function AnalyticsScreen() {
             <XStack alignItems="center" gap="$2">
               <IconChartBar color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
               <Text fontFamily="$heading" fontSize="$md" color="$color">
-                Supermercado que más usás
+                Supermercado que más usas
               </Text>
             </XStack>
             {analyticsQuery.data.most_used_store.store_name ? (
@@ -162,7 +162,7 @@ export function AnalyticsScreen() {
               </>
             ) : (
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Todavía no tenés suficiente historial de compras repetidas para estimar esto.
+                Todavía no tienes suficiente historial de compras repetidas para estimar esto.
               </Text>
             )}
           </AnalyticsCard>

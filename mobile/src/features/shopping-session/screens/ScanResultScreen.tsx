@@ -367,7 +367,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
               Guardar o comparar
             </Text>
             <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-              Elegí si querés sumar este producto a una compra activa o arrancar una nueva.
+              Elige si quieres sumar este producto a una compra activa o arrancar una nueva.
             </Text>
           </YStack>
 
@@ -476,7 +476,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
                     No hay una compra activa
                   </Text>
                   <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                    Podés crear una compra nueva y elegir tienda/sucursal para seguir con este producto.
+                    Puedes crear una compra nueva y elegir tienda/sucursal para seguir con este producto.
                   </Text>
                 </YStack>
               </XStack>

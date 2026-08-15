@@ -107,7 +107,7 @@ export function CreateProductScreen({ route, navigation }: Props) {
                 Creemos un producto nuevo
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Completá los datos mínimos para registrar este código y seguir con el flujo.
+                Completa los datos mínimos para registrar este código y seguir con el flujo.
               </Text>
             </YStack>
           </XStack>

@@ -22,15 +22,7 @@ import type { Store, StoreBranch } from '@prezio/shared-types';
 
 type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'BranchSelect'>;
 
-function StepChip({ children }: { children: string }) {
-  return (
-    <YStack backgroundColor="rgba(34, 197, 94, 0.08)" borderRadius="$full" paddingHorizontal="$3" paddingVertical="$1.5">
-      <Text fontFamily="$body" fontSize="$xs" color="$primary">
-        {children}
-      </Text>
-    </YStack>
-  );
-}
+const primaryPressStyle = { backgroundColor: '$primaryPress' };
 
 /** First step of the scan flow: pick a store, then a branch, before the camera opens --
  * quick scan can skip this, but the contextual/new-purchase flow still uses it. */
@@ -77,8 +69,8 @@ export function BranchSelectScreen({ route, navigation }: Props) {
         title="Nueva compra"
         subtitle={
           pendingScan
-            ? 'Elegí tienda y sucursal para arrancar la compra con el producto ya leído.'
-            : 'Elegí supermercado y sucursal antes de empezar a escanear.'
+            ? 'Elige tienda y sucursal para arrancar la compra con el producto ya leído.'
+            : 'Elige supermercado y sucursal antes de empezar a escanear.'
         }
         onBack={() => navigation.goBack()}
       />
@@ -102,16 +94,9 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                 ¿En qué súper vas a comprar hoy?
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Elegí la tienda y la sucursal antes de empezar a escanear.
+                Elige la tienda y la sucursal antes de empezar a escanear.
               </Text>
             </YStack>
-          </XStack>
-
-          <XStack flexWrap="wrap" gap="$2">
-            <StepChip>Tienda</StepChip>
-            <StepChip>Sucursal</StepChip>
-            <StepChip>Escáner</StepChip>
-            <StepChip>Precio</StepChip>
           </XStack>
         </Card>
 
@@ -122,7 +107,7 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                 Tiendas disponibles
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Seleccioná una tienda para ver sus sucursales.
+                Selecciona una tienda para ver sus sucursales.
               </Text>
             </YStack>
 
@@ -176,7 +161,7 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                         {store.name}
                       </Text>
                       <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
-                        Elegí una sucursal para continuar
+                        Elige una sucursal para continuar
                       </Text>
                     </YStack>
                   </XStack>
@@ -231,7 +216,7 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                     {selectedStore.name}
                   </Text>
                   <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
-                    Tocá para cambiarla
+                    Toca para cambiarla
                   </Text>
                 </YStack>
               </XStack>
@@ -243,7 +228,7 @@ export function BranchSelectScreen({ route, navigation }: Props) {
                 Sucursales de {selectedStore.name}
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Elegí la sucursal donde vas a comparar precios.
+                Elige la sucursal donde vas a comparar precios.
               </Text>
             </YStack>
 
@@ -324,10 +309,21 @@ export function BranchSelectScreen({ route, navigation }: Props) {
           <Button
             backgroundColor="$primary"
             color="$white"
+            pressStyle={primaryPressStyle}
+            borderRadius="$4"
+            paddingVertical="$4"
+            minHeight={56}
+            opacity={canStartPurchase ? 1 : 0.7}
             disabled={!canStartPurchase}
             onPress={() => handleStartPurchase().catch(() => undefined)}
           >
-            {isSubmitting ? <ActivityIndicator color={colorTokens.white} /> : 'Escanear'}
+            {isSubmitting ? (
+              <ActivityIndicator color={colorTokens.white} />
+            ) : (
+              <Text fontFamily="$heading" fontSize="$md" color="$white">
+                Escanear
+              </Text>
+            )}
           </Button>
         </Card>
       </YStack>

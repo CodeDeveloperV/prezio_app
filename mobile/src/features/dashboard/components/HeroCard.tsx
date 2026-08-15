@@ -68,7 +68,7 @@ export function HeroCard({
             {activeSessionMetric ?? '0 productos pendientes'}
           </Text>
           <Text fontFamily="$body" fontSize="$sm" color="#CBD5E1">
-            Continuá donde la dejaste.
+            Continúa donde la dejaste.
           </Text>
         </YStack>
 
@@ -117,8 +117,8 @@ export function HeroCard({
           </Text>
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
             {hasActiveSession
-              ? 'Continuá donde la dejaste.'
-              : 'Armá tu lista y comparemos precios en el súper.'}
+              ? 'Continúa donde la dejaste.'
+              : 'Arma tu lista y comparemos precios en el súper.'}
           </Text>
         </YStack>
       </XStack>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Image, StyleSheet } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -411,7 +411,7 @@ export function ScanScreen({ route, navigation }: Props) {
         }
       } catch (error) {
         if (error instanceof HTTPError) {
-          let message = 'No pudimos validar este código. Intentá de nuevo en unos segundos.';
+          let message = 'No pudimos validar este código. Intenta de nuevo en unos segundos.';
 
           try {
             const payload = (await error.response.clone().json()) as {
@@ -496,7 +496,7 @@ export function ScanScreen({ route, navigation }: Props) {
       handleDetectedBarcode(barcodeValue).catch(() => undefined);
     },
     onError: () => {
-      setOfflineNotice('No pudimos activar el lector automático. Usá la búsqueda manual.');
+      setOfflineNotice('No pudimos activar el lector automático. Usa la búsqueda manual.');
     },
   });
 
@@ -506,7 +506,7 @@ export function ScanScreen({ route, navigation }: Props) {
       return;
     }
     if (value.length < 5) {
-      setOfflineNotice('Escribí al menos 5 caracteres para buscar coincidencias.');
+      setOfflineNotice('Escribe al menos 5 caracteres para buscar coincidencias.');
       return;
     }
 
@@ -542,7 +542,7 @@ export function ScanScreen({ route, navigation }: Props) {
             Búsqueda manual
           </Text>
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-            Buscá por nombre, marca, presentación o código. Requiere al menos 5 caracteres.
+            Busca por nombre, marca, presentación o código. Requiere al menos 5 caracteres.
           </Text>
         </Card>
       );
@@ -565,7 +565,7 @@ export function ScanScreen({ route, navigation }: Props) {
               Escaneo rápido
             </Text>
             <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-              Abrí la cámara, leé el producto y mirá el precio más bajo con su top de ofertas.
+              Abre la cámara, lee el producto y mira el precio más bajo con su top de ofertas.
             </Text>
           </YStack>
         </XStack>
@@ -618,7 +618,7 @@ export function ScanScreen({ route, navigation }: Props) {
         <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
           <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
           <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
-            No pudimos buscar productos. Revisá tu conexión e intentá de nuevo.
+            No pudimos buscar productos. Revisa tu conexión e intenta de nuevo.
           </Text>
         </XStack>
       ) : productSearchQuery.data && productSearchQuery.data.length > 0 ? (
@@ -692,10 +692,58 @@ export function ScanScreen({ route, navigation }: Props) {
     ) : (
       <Card backgroundColor="rgba(15, 23, 42, 0.04)" borderRadius="$3" padding="$3">
         <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-          Escribí al menos 5 caracteres para ver coincidencias.
+          Escribe al menos 5 caracteres para ver coincidencias.
         </Text>
       </Card>
     );
+
+  const modeSwitcher = (
+    <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$2">
+      <XStack gap="$2">
+        <ScanModeButton
+          active={mode === 'scan'}
+          label="Escanear"
+          icon={<IconScan color={mode === 'scan' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          onPress={() => setMode('scan')}
+        />
+        <ScanModeButton
+          active={mode === 'history'}
+          label="Historial"
+          icon={<IconHistory color={mode === 'history' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          onPress={() => setMode('history')}
+        />
+        <ScanModeButton
+          active={mode === 'manual'}
+          label="Manual"
+          icon={<IconBarcode color={mode === 'manual' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          onPress={() => setMode('manual')}
+        />
+      </XStack>
+    </Card>
+  );
+
+  const latestScanCard = latestScan ? (
+    <YStack gap="$2">
+      <Text fontFamily="$heading" fontSize="$sm" color="$color">
+        Último elemento escaneado
+      </Text>
+      <RecentScanCard
+        entry={latestScan}
+        onPress={() =>
+          navigation.navigate('ScanResult', {
+            storeBranchId: latestScan.storeBranchId,
+            barcodeId: latestScan.barcodeId,
+            product: latestScan.product,
+            storeProduct: latestScan.storeProduct,
+            fromSearch: latestScan.source === 'manual',
+            fromCache: latestScan.source === 'cached',
+            priceOffers: latestScan.priceOffers,
+            scanFlow: latestScan.scanFlow,
+          })
+        }
+      />
+    </YStack>
+  ) : null;
 
   if (!hasPermission) {
     return (
@@ -707,16 +755,11 @@ export function ScanScreen({ route, navigation }: Props) {
         />
         <YStack flex={1} padding="$4" justifyContent="center">
           <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$5" gap="$4">
-            <YStack
-              width={64}
-              height={64}
-              borderRadius="$full"
+            <TintedIconBadge
+              size={64}
               backgroundColor="rgba(34, 197, 94, 0.12)"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <IconBarcode color={colorTokens.primary} size={30} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            </YStack>
+              icon={<IconBarcode color={colorTokens.primary} size={30} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+            />
 
             <YStack gap="$1">
               <Text fontFamily="$heading" fontSize="$xl" color="$color">
@@ -727,7 +770,7 @@ export function ScanScreen({ route, navigation }: Props) {
               </Text>
             </YStack>
 
-            <Button backgroundColor="$primary" color="$white" onPress={requestPermission}>
+            <Button backgroundColor="$primary" color="$white" onPress={requestPermission} minHeight={56}>
               Conceder acceso
             </Button>
           </Card>
@@ -744,39 +787,18 @@ export function ScanScreen({ route, navigation }: Props) {
           mode === 'scan'
             ? scanSubtitle(scanFlow, routeStoreBranchId)
             : mode === 'history'
-              ? 'Revisá los últimos escaneos de esta sesión'
-              : 'Buscá por nombre, marca, presentación o código'
+              ? 'Revisa los últimos escaneos de esta sesión'
+              : 'Busca por nombre, marca, presentación o código'
         }
         onBack={() => navigation.goBack()}
       />
 
-      <YStack flex={1} paddingHorizontal="$4" paddingBottom="$4" gap="$4">
-        <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$2">
-          <XStack gap="$2">
-            <ScanModeButton
-              active={mode === 'scan'}
-              label="Escanear"
-              icon={<IconScan color={mode === 'scan' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
-              onPress={() => setMode('scan')}
-            />
-            <ScanModeButton
-              active={mode === 'history'}
-              label="Historial"
-              icon={<IconHistory color={mode === 'history' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
-              onPress={() => setMode('history')}
-            />
-            <ScanModeButton
-              active={mode === 'manual'}
-              label="Manual"
-              icon={<IconBarcode color={mode === 'manual' ? colorTokens.white : colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
-              onPress={() => setMode('manual')}
-            />
-          </XStack>
-        </Card>
+      {mode === 'scan' ? (
+        <YStack flex={1} paddingHorizontal="$4" paddingBottom="$4" gap="$4">
+          {modeSwitcher}
 
-        {helperCard}
+          {helperCard}
 
-        {mode === 'scan' ? (
           <YStack gap="$3" flex={1}>
             <YStack
               flex={1}
@@ -846,78 +868,68 @@ export function ScanScreen({ route, navigation }: Props) {
               </XStack>
             )}
           </YStack>
-        ) : null}
+        </YStack>
+      ) : (
+        <ScrollView
+          style={styles.scrollBody}
+          contentContainerStyle={styles.scrollBodyContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {modeSwitcher}
 
-        {mode === 'manual' ? (
-          <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
-            <XStack alignItems="center" gap="$2">
-              <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-              <Text fontFamily="$heading" fontSize="$sm" color="$color">
-                Búsqueda manual
-              </Text>
-            </XStack>
+          {helperCard}
 
-            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-              Buscá por nombre, marca, presentación o código. Si querés validar un barcode exacto, usá el botón.
-            </Text>
-
-            <XStack gap="$2" alignItems="center">
-              <Input
-                flex={1}
-                placeholder="Nombre, marca, presentación o código"
-                value={searchText}
-                onChangeText={setSearchText}
-                onSubmitEditing={handleSubmit}
-              />
-              <Button
-                backgroundColor="$primary"
-                color="$white"
-                disabled={searchText.trim().length < 5 || scanMutation.isPending}
-                onPress={handleSubmit}
-                minWidth={112}
-              >
-                {scanMutation.isPending ? <ActivityIndicator color={colorTokens.white} /> : 'Buscar'}
-              </Button>
-            </XStack>
-
-            {manualResults}
-
-            {offlineNotice && (
-              <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
-                <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-                <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
-                  {offlineNotice}
+          {mode === 'manual' ? (
+            <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$3">
+              <XStack alignItems="center" gap="$2">
+                <IconBarcode color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                  Búsqueda manual
                 </Text>
               </XStack>
-            )}
-          </Card>
-        ) : null}
 
-        {mode === 'history' ? scanHistory : null}
+              <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+                Busca por nombre, marca, presentación o código. Si quieres validar un barcode exacto, usa el botón.
+              </Text>
 
-        {latestScan ? (
-          <YStack gap="$2">
-            <Text fontFamily="$heading" fontSize="$sm" color="$color">
-              Ultimo elemento escaneado
-            </Text>
-            <RecentScanCard
-              entry={latestScan}
-              onPress={() =>
-                navigation.navigate('ScanResult', {
-                  storeBranchId: latestScan.storeBranchId,
-                  barcodeId: latestScan.barcodeId,
-                  product: latestScan.product,
-                  storeProduct: latestScan.storeProduct,
-                  fromSearch: latestScan.source === 'manual',
-                  fromCache: latestScan.source === 'cached',
-                  priceOffers: latestScan.priceOffers,
-                  scanFlow: latestScan.scanFlow,
-                })
-              }
-            />
-          </YStack>
-        ) : null}
-      </YStack>
+              <XStack gap="$2" alignItems="center">
+                <Input
+                  flex={1}
+                  placeholder="Nombre, marca, presentación o código"
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  onSubmitEditing={handleSubmit}
+                />
+                <Button
+                  backgroundColor="$primary"
+                  color="$white"
+                  disabled={searchText.trim().length < 5 || scanMutation.isPending}
+                  onPress={handleSubmit}
+                  minWidth={112}
+                >
+                  {scanMutation.isPending ? <ActivityIndicator color={colorTokens.white} /> : 'Buscar'}
+                </Button>
+              </XStack>
+
+              {manualResults}
+
+              {offlineNotice && (
+                <XStack alignItems="center" gap="$2" backgroundColor="rgba(239, 68, 68, 0.08)" borderRadius="$3" padding="$3">
+                  <IconAlertTriangle color={colorTokens.danger} size={16} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                  <Text fontFamily="$body" fontSize="$xs" color="$danger" flex={1}>
+                    {offlineNotice}
+                  </Text>
+                </XStack>
+              )}
+            </Card>
+          ) : null}
+
+          {mode === 'history' ? scanHistory : null}
+
+          {latestScanCard}
+        </ScrollView>
+      )}
     </YStack>
   );
 }
