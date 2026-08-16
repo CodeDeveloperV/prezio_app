@@ -11,6 +11,7 @@ from app.features.analytics.router import router as analytics_router
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.comparison.router import router as comparison_router
+from app.features.b2b_analytics.router import router as b2b_analytics_router
 from app.features.coupons.router import router as coupons_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.moderation.router import router as moderation_router
@@ -69,6 +70,7 @@ app.include_router(organizations_catalog_router)
 app.include_router(organizations_pricing_router)
 app.include_router(promotions_router)
 app.include_router(coupons_router)
+app.include_router(b2b_analytics_router)
 app.include_router(reports_router)
 app.include_router(reports_end_user_router)
 

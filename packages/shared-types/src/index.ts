@@ -1212,3 +1212,131 @@ export interface ReportResolveRequest {
 export interface ReportDismissRequest {
   resolution_note?: string | null;
 }
+
+// --- B2B analytics (web-admin portal, GET /b2b/organizations/{id}/analytics/*) ---------------
+// Read-only, derived aggregates -- no new persisted tables. Fase 10.12.
+
+export interface BranchCountRead {
+  branch_id: number;
+  branch_name: string;
+  count: number;
+}
+
+export interface TypeCountRead {
+  type: string;
+  count: number;
+}
+
+export interface CategoryCountRead {
+  category_id: number;
+  category_name: string;
+  count: number;
+}
+
+export interface OverviewRead {
+  active_branches: number;
+  active_listings: number;
+  prices_updated: number;
+  prices_updated_previous_period: number | null;
+  stale_prices: number;
+  out_of_stock: number;
+  open_reports: number;
+  high_priority_open_reports: number;
+  active_promotions: number;
+  active_coupons: number;
+}
+
+export interface PriceTimeSeriesPointRead {
+  bucket_start: ISODateTime;
+  changes_count: number;
+  increases_count: number;
+  decreases_count: number;
+}
+
+export interface TopPriceChangeProductRead {
+  product_id: number;
+  product_name: string;
+  store_branch_id: number;
+  branch_name: string;
+  changes_count: number;
+  current_price: number;
+  last_updated: ISODateTime;
+}
+
+export interface PricingAnalyticsRead {
+  granularity: string;
+  time_series: PriceTimeSeriesPointRead[];
+  increases_count: number;
+  decreases_count: number;
+  avg_change_percent: number | null;
+  median_change_percent: number | null;
+  top_products: TopPriceChangeProductRead[];
+  stale_prices_by_branch: BranchCountRead[];
+}
+
+export interface AvailabilityByBranchRead {
+  branch_id: number;
+  branch_name: string;
+  in_stock: number;
+  out_of_stock: number;
+  unknown: number;
+}
+
+export interface AvailabilityAnalyticsRead {
+  in_stock: number;
+  out_of_stock: number;
+  unknown: number;
+  by_branch: AvailabilityByBranchRead[];
+  active_listings_by_category: CategoryCountRead[];
+}
+
+export interface LifecycleCountsRead {
+  active: number;
+  scheduled: number;
+  expired: number;
+  cancelled: number;
+}
+
+export interface PromotionsAnalyticsRead {
+  counts: LifecycleCountsRead;
+  by_branch: BranchCountRead[];
+  by_type: TypeCountRead[];
+  products_currently_promoted: number;
+}
+
+export interface CouponsAnalyticsRead {
+  counts: LifecycleCountsRead;
+  by_type: TypeCountRead[];
+  by_branch: BranchCountRead[];
+  applies_to_all_branches_count: number;
+}
+
+export interface ReportsAnalyticsRead {
+  open_count: number;
+  in_review_count: number;
+  high_priority_open_count: number;
+  resolved_count: number;
+  dismissed_count: number;
+  resolved_previous_period_count: number | null;
+  by_type: TypeCountRead[];
+  by_branch: BranchCountRead[];
+  avg_resolution_hours: number | null;
+}
+
+export interface ActivityEntryRead {
+  type: string;
+  description: string;
+  occurred_at: ISODateTime;
+  branch_id: number | null;
+  branch_name: string | null;
+}
+
+export interface ActivityFeedRead {
+  items: ActivityEntryRead[];
+}
+
+export interface AnalyticsQueryParams {
+  date_from?: string;
+  date_to?: string;
+  branch_ids?: number[];
+}

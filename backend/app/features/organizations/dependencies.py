@@ -2,9 +2,12 @@ from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.redis import get_redis
 from app.features.auth.dependencies import get_current_user
+from app.features.b2b_analytics.repository import B2BAnalyticsRepository
+from app.features.b2b_analytics.service import B2BAnalyticsService
 from app.features.catalog.repository import CategoryRepository, ProductRepository
 from app.features.catalog.service import CatalogService
 from app.features.coupons.repository import CouponBranchRepository, CouponProductRepository, CouponRepository
@@ -118,6 +121,19 @@ def get_report_service(
         ProductRepository(db),
         StoreProductRepository(db),
         StoreBranchRepository(db),
+    )
+
+
+def get_b2b_analytics_service(
+    db: AsyncSession = Depends(get_db),
+    membership: OrganizationMembershipService = Depends(get_membership_service),
+) -> B2BAnalyticsService:
+    settings = get_settings()
+    return B2BAnalyticsService(
+        B2BAnalyticsRepository(db),
+        membership,
+        StoreProductRepository(db),
+        settings.price_freshness_days,
     )
 
 

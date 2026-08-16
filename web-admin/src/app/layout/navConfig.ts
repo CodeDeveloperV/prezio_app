@@ -1,6 +1,7 @@
 import {
   IconBuildingStore,
   IconCategory,
+  IconChartBar,
   IconDashboard,
   IconDiscount2,
   IconReportAnalytics,
@@ -22,6 +23,7 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: IconDashboard },
+  { label: 'Analítica', path: '/analytics', icon: IconChartBar, roles: ['organization_admin', 'manager'] },
   { label: 'Sucursales', path: '/branches', icon: IconBuildingStore },
   { label: 'Catálogo', path: '/catalog', icon: IconCategory },
   { label: 'Precios', path: '/pricing', icon: IconTag },
