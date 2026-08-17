@@ -9,6 +9,9 @@ import { brand } from './tokens';
 
 export { default as IconBarcode } from '@tabler/icons-react-native/IconBarcode';
 export { default as IconScan } from '@tabler/icons-react-native/IconScan';
+export { default as IconKeyboard } from '@tabler/icons-react-native/IconKeyboard';
+export { default as IconBolt } from '@tabler/icons-react-native/IconBolt';
+export { default as IconBoltOff } from '@tabler/icons-react-native/IconBoltOff';
 export { default as IconShoppingCart } from '@tabler/icons-react-native/IconShoppingCart';
 export { default as IconWallet } from '@tabler/icons-react-native/IconWallet';
 export { default as IconUser } from '@tabler/icons-react-native/IconUser';
