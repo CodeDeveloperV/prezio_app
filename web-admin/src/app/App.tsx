@@ -1,4 +1,5 @@
 import { useSessionBootstrap } from '@/features/auth/hooks/useSessionBootstrap';
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { AppProviders } from './providers/AppProviders';
 import { AppRouter } from './router/AppRouter';
 
@@ -10,7 +11,9 @@ function Bootstrapped() {
 export function App() {
   return (
     <AppProviders>
-      <Bootstrapped />
+      <ErrorBoundary>
+        <Bootstrapped />
+      </ErrorBoundary>
     </AppProviders>
   );
 }

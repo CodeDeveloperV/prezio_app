@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,7 @@ from app.features.coupons.repository import CouponBranchRepository, CouponProduc
 from app.features.coupons.service import CouponService
 from app.features.organizations.catalog_service import B2BCatalogService
 from app.features.organizations.enums import OrganizationRole
+from app.features.organizations.exceptions import BranchAccessDenied, InvalidBranchForOrganization
 from app.features.organizations.models import OrganizationMember
 from app.features.organizations.pricing_service import B2BPricingService
 from app.features.organizations.repository import OrganizationMemberBranchRepository, OrganizationMemberRepository
@@ -33,6 +36,8 @@ from app.features.reputation.service import ReputationService
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
 from app.features.users.models import User
 from app.features.users.repository import UserRepository
+
+logger = logging.getLogger(__name__)
 
 
 def get_membership_service(db: AsyncSession = Depends(get_db)) -> OrganizationMembershipService:
@@ -159,6 +164,13 @@ def require_organization_role(*roles: OrganizationRole):
         member: OrganizationMember = Depends(require_organization_member),
     ) -> OrganizationMember:
         if member.role not in roles:
+            logger.warning(
+                "Authorization denied: member=%d role=%s store_id=%d requires one of %s",
+                member.id,
+                member.role,
+                member.store_id,
+                [r.value for r in roles],
+            )
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return member
 
@@ -169,21 +181,29 @@ def require_branch_access(branch_id_param: str = "branch_id"):
     """Dependency factory: reads `branch_id_param` from the route's path params, since the
     param name varies per router (e.g. `branch_id` vs `store_branch_id`).
 
-    ORGANIZATION_ADMIN is authorized for every branch of its organization; MANAGER/EMPLOYEE
-    need an explicit `OrganizationMemberBranch` grant.
+    Always validates the branch belongs to `store_id` first (else `InvalidBranchForOrganization`,
+    surfaced as 400) -- an ORGANIZATION_ADMIN is authorized for every branch of *its own*
+    organization, not for a branch belonging to a different one. MANAGER/EMPLOYEE additionally
+    need an explicit `OrganizationMemberBranch` grant (else `BranchAccessDenied`, surfaced as 403).
     """
 
     async def _dependency(
         request: Request,
+        store_id: int,
         member: OrganizationMember = Depends(require_organization_member),
         service: OrganizationMembershipService = Depends(get_membership_service),
     ) -> OrganizationMember:
-        if member.role == OrganizationRole.ORGANIZATION_ADMIN:
-            return member
-
         raw_branch_id = request.path_params.get(branch_id_param)
-        if raw_branch_id is None or not await service.has_branch_access(member, int(raw_branch_id)):
+        if raw_branch_id is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this branch")
+        try:
+            await service.authorize_branch(store_id, member, int(raw_branch_id))
+        except InvalidBranchForOrganization as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Branch does not belong to this organization"
+            ) from exc
+        except BranchAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this branch") from exc
         return member
 
     return _dependency

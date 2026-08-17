@@ -59,6 +59,24 @@ async def test_admin_can_list_and_add_product_to_branch(async_client: AsyncClien
     assert body[0]["current_price"] == "2.75"
 
 
+async def test_adding_a_listing_at_a_branch_from_another_organization_is_rejected(async_client: AsyncClient) -> None:
+    """`branch_ids` is a client-controlled array param -- every ID must be authorized against
+    the caller's own org, not just accepted as-is (mirrors the equivalent coupons/promotions
+    tests for the same array-param pattern)."""
+    store_a_id, _ = await seed_store(async_client, "Super A")
+    _, other_branch_id = await seed_store(async_client, "Super B")
+    product_id = await add_product(async_client)
+    admin_a_token = await _admin(async_client, store_a_id, "admin-a-catalog-idor@example.com")
+
+    response = await async_client.post(
+        f"/b2b/organizations/{store_a_id}/catalog/products/{product_id}/branches",
+        json={"branch_ids": [other_branch_id], "initial_price": "2.75", "currency": "USD"},
+        headers=auth(admin_a_token),
+    )
+
+    assert response.status_code == 400
+
+
 async def test_product_summary_and_detail_expose_a_representative_barcode(async_client: AsyncClient) -> None:
     store_id, _ = await seed_store(async_client)
     product_id = await add_product(async_client)

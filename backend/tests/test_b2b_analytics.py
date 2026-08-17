@@ -500,3 +500,38 @@ async def test_no_cross_tenant_leakage_across_all_analytics_endpoints(async_clie
     for endpoint in ("overview", "pricing", "availability", "promotions", "coupons", "reports", "activity"):
         response = await async_client.get(_url(store_b, endpoint), headers=auth(admin_a_token))
         assert response.status_code == 404, f"{endpoint} leaked cross-tenant access"
+
+
+# --- role restrictions: detailed analytics are admin/manager-only, overview/activity are for everyone --------
+
+
+async def test_employee_is_forbidden_from_detailed_analytics_endpoints(async_client: AsyncClient) -> None:
+    store_id, _ = await seed_store(async_client)
+    employee_id, employee_token = await register_and_login(async_client, "employee@example.com")
+    await add_membership(async_client, store_id, employee_id, "employee")
+
+    for endpoint in ("pricing", "availability", "promotions", "coupons", "reports"):
+        response = await async_client.get(_url(store_id, endpoint), headers=auth(employee_token))
+        assert response.status_code == 403, f"employee should not access {endpoint}"
+
+
+async def test_manager_can_access_detailed_analytics_endpoints(async_client: AsyncClient) -> None:
+    store_id, branch_id = await seed_store(async_client)
+    manager_id, manager_token = await register_and_login(async_client, "manager-analytics@example.com")
+    member_id = await add_membership(async_client, store_id, manager_id, "manager")
+    await grant_branch_access(async_client, member_id, branch_id)
+
+    for endpoint in ("pricing", "availability", "promotions", "coupons", "reports"):
+        response = await async_client.get(_url(store_id, endpoint), headers=auth(manager_token))
+        assert response.status_code == 200, f"manager should access {endpoint}"
+
+
+async def test_employee_can_access_overview_and_activity(async_client: AsyncClient) -> None:
+    store_id, branch_id = await seed_store(async_client)
+    employee_id, employee_token = await register_and_login(async_client, "employee-overview@example.com")
+    member_id = await add_membership(async_client, store_id, employee_id, "employee")
+    await grant_branch_access(async_client, member_id, branch_id)
+
+    for endpoint in ("overview", "activity"):
+        response = await async_client.get(_url(store_id, endpoint), headers=auth(employee_token))
+        assert response.status_code == 200, f"employee should access {endpoint}"

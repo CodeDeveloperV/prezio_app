@@ -68,6 +68,29 @@ async def test_org_a_admin_cannot_see_org_b_members(async_client: AsyncClient) -
     assert response.status_code == 404
 
 
+async def test_org_a_admin_cannot_update_or_remove_org_bs_member_via_own_store_id(async_client: AsyncClient) -> None:
+    store_a_id, _ = await seed_store(async_client, "Super 99")
+    store_b_id, _ = await seed_store(async_client, "Riba Smith")
+
+    admin_a_id, admin_a_token = await register_and_login(async_client, "admin-a-idor@example.com")
+    await add_membership(async_client, store_a_id, admin_a_id, "organization_admin")
+
+    victim_id, _ = await register_and_login(async_client, "victim@example.com")
+    victim_member_id = await add_membership(async_client, store_b_id, victim_id, "employee")
+
+    update_response = await async_client.patch(
+        f"/b2b/organizations/{store_a_id}/members/{victim_member_id}",
+        json={"role": "organization_admin"},
+        headers=auth(admin_a_token),
+    )
+    remove_response = await async_client.delete(
+        f"/b2b/organizations/{store_a_id}/members/{victim_member_id}", headers=auth(admin_a_token)
+    )
+
+    assert update_response.status_code == 404
+    assert remove_response.status_code == 404
+
+
 async def test_manager_cannot_list_or_invite_members(async_client: AsyncClient) -> None:
     store_id, _ = await seed_store(async_client)
     manager_id, manager_token = await register_and_login(async_client, "manager@example.com")
@@ -78,6 +101,22 @@ async def test_manager_cannot_list_or_invite_members(async_client: AsyncClient) 
         f"/b2b/organizations/{store_id}/members",
         json={"email": "someone@example.com", "role": "employee"},
         headers=auth(manager_token),
+    )
+
+    assert list_response.status_code == 403
+    assert invite_response.status_code == 403
+
+
+async def test_employee_cannot_list_or_invite_members(async_client: AsyncClient) -> None:
+    store_id, _ = await seed_store(async_client)
+    employee_id, employee_token = await register_and_login(async_client, "employee-members@example.com")
+    await add_membership(async_client, store_id, employee_id, "employee")
+
+    list_response = await async_client.get(f"/b2b/organizations/{store_id}/members", headers=auth(employee_token))
+    invite_response = await async_client.post(
+        f"/b2b/organizations/{store_id}/members",
+        json={"email": "someone-else@example.com", "role": "employee"},
+        headers=auth(employee_token),
     )
 
     assert list_response.status_code == 403

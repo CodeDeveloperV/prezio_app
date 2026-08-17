@@ -19,7 +19,7 @@ export interface ChartCardProps {
 export function ChartCard({ title, helperText, loading, isEmpty, emptyMessage, height = 280, children }: ChartCardProps) {
   return (
     <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 1 }}>
+      <Stack direction="row" spacing={0.5} sx={{ mb: 1, alignItems: 'center' }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           {title}
         </Typography>

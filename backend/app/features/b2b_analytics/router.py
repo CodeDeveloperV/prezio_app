@@ -12,10 +12,17 @@ from app.features.b2b_analytics.schemas import (
     ReportsAnalyticsRead,
 )
 from app.features.b2b_analytics.service import B2BAnalyticsService
-from app.features.organizations.dependencies import get_b2b_analytics_service, require_organization_member
+from app.features.organizations.dependencies import (
+    get_b2b_analytics_service,
+    require_organization_member,
+    require_organization_role,
+)
+from app.features.organizations.enums import OrganizationRole
 from app.features.organizations.models import OrganizationMember
 
 router = APIRouter(prefix="/b2b", tags=["b2b-analytics"])
+
+_require_manager_or_admin = require_organization_role(OrganizationRole.ORGANIZATION_ADMIN, OrganizationRole.MANAGER)
 
 
 def _default_range(date_from: datetime | None, date_to: datetime | None) -> tuple[datetime, datetime]:
@@ -46,7 +53,7 @@ async def get_pricing_analytics(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     branch_ids: list[int] | None = Query(default=None),
-    member: OrganizationMember = Depends(require_organization_member),
+    member: OrganizationMember = Depends(_require_manager_or_admin),
     service: B2BAnalyticsService = Depends(get_b2b_analytics_service),
 ) -> PricingAnalyticsRead:
     resolved_from, resolved_to = _default_range(date_from, date_to)
@@ -59,7 +66,7 @@ async def get_pricing_analytics(
 async def get_availability_analytics(
     store_id: int,
     branch_ids: list[int] | None = Query(default=None),
-    member: OrganizationMember = Depends(require_organization_member),
+    member: OrganizationMember = Depends(_require_manager_or_admin),
     service: B2BAnalyticsService = Depends(get_b2b_analytics_service),
 ) -> AvailabilityAnalyticsRead:
     return await service.get_availability_analytics(store_id, member, branch_ids=branch_ids)
@@ -69,7 +76,7 @@ async def get_availability_analytics(
 async def get_promotions_analytics(
     store_id: int,
     branch_ids: list[int] | None = Query(default=None),
-    member: OrganizationMember = Depends(require_organization_member),
+    member: OrganizationMember = Depends(_require_manager_or_admin),
     service: B2BAnalyticsService = Depends(get_b2b_analytics_service),
 ) -> PromotionsAnalyticsRead:
     return await service.get_promotions_analytics(store_id, member, branch_ids=branch_ids)
@@ -79,7 +86,7 @@ async def get_promotions_analytics(
 async def get_coupons_analytics(
     store_id: int,
     branch_ids: list[int] | None = Query(default=None),
-    member: OrganizationMember = Depends(require_organization_member),
+    member: OrganizationMember = Depends(_require_manager_or_admin),
     service: B2BAnalyticsService = Depends(get_b2b_analytics_service),
 ) -> CouponsAnalyticsRead:
     return await service.get_coupons_analytics(store_id, member, branch_ids=branch_ids)
@@ -91,7 +98,7 @@ async def get_reports_analytics(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     branch_ids: list[int] | None = Query(default=None),
-    member: OrganizationMember = Depends(require_organization_member),
+    member: OrganizationMember = Depends(_require_manager_or_admin),
     service: B2BAnalyticsService = Depends(get_b2b_analytics_service),
 ) -> ReportsAnalyticsRead:
     resolved_from, resolved_to = _default_range(date_from, date_to)

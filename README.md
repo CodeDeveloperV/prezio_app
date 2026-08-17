@@ -93,6 +93,107 @@ inline from the dashboard's budget card (`PATCH /users/me/budget`); `remaining_b
 - `remaining_budget` only accounts for spend snapshotted via checked list items; it doesn't reserve budget for items still unchecked on an active list.
 - The trend chart (`SpendTrendChart`) always shows a fixed trailing 6-month window; it's not user-configurable.
 
+## Portal Web B2B (multi-tenancy & authorization)
+
+`web-admin/` is a separate React SPA for supermarket chain staff — pricing, catalog, promotions,
+coupons, member management, reports, and analytics for the chain's own branches. It talks to the
+same backend under `backend/app/features/organizations/` (plus `promotions`, `coupons`, `reports`,
+`b2b_analytics`), all keyed off a `store_id` path param representing the organization (a `Store`
+row of type "chain").
+
+**Roles** (`OrganizationRole`, `backend/app/features/organizations/enums.py`) scope *what* a member
+can manage; branch access (`OrganizationMemberBranch`) scopes *where* — these are independent axes,
+not a hierarchy:
+- `ORGANIZATION_ADMIN` — full read/write across the organization, including member management,
+  publishing promotions/coupons, and every analytics view. Implicitly has access to every branch.
+- `MANAGER` — same write surface as admin for catalog/pricing/promotions/coupons/reports, plus
+  analytics; cannot manage members. Branch access is still explicit — a manager only reaches
+  branches they've been granted.
+- `EMPLOYEE` — day-to-day operational actions (price/availability updates, viewing reports) scoped
+  to their granted branches only; no analytics, no member management, no promotion/coupon
+  authoring.
+
+**The core rule — worth stating explicitly because it's the one thing every endpoint here must get
+right: frontend filters are UX, backend authorization is security.** `web-admin`'s `navConfig.ts`
+hides the Analytics nav item from employees, and `AnalyticsPage.tsx` shows an info alert instead of
+charts for non-managers — but neither of those is what stops an employee from *seeing* analytics
+data. That's enforced by `require_organization_role(ORGANIZATION_ADMIN, MANAGER)` on the actual
+`b2b_analytics` router endpoints. This distinction is not theoretical: during Fase 10.13 hardening
+we found that exact gap — all 7 `b2b_analytics` endpoints originally only required
+`require_organization_member` (any role), so an `EMPLOYEE` who noticed the hidden nav item, or
+simply called the API directly, could pull pricing/availability/promotion/coupon/report analytics
+they had no business seeing. The frontend had always been "correct" — the backend hadn't been
+enforcing what the UI implied. Fixed by adding the role check server-side (5 of 7 endpoints;
+`overview`/`activity` stay open to all roles, matching the operational dashboard employees are
+meant to use) and locking it in with a regression test that asserts a 403, not just that the nav
+item is hidden.
+
+**Every B2B route validates tenant scope from the database, never from the URL alone.** A request
+for `GET /organizations/{store_id}/promotions/{promotion_id}` first resolves the caller's own
+active membership for `store_id` (via `require_organization_member` — 404, not 403, on no/inactive
+membership, so an outsider can't distinguish "wrong org" from "org doesn't exist"), then loads the
+promotion and checks `promotion.store_id == store_id` before returning anything. The same
+load-then-check-then-return shape is repeated for branches, coupons, reports, catalog listings, and
+pricing. An Org-A admin sending Org-B's `promotion_id`/`branch_id`/`coupon_id`/`member_id` alongside
+their own, valid `store_id` gets 404, never a 200 with someone else's data — this is exercised
+directly by cross-tenant regression tests in `backend/tests/test_promotions.py`,
+`test_coupons.py`, `test_reports.py`, `test_organizations.py`, etc. (Org A's own `store_id` +
+Org B's resource ID → 404).
+
+A related, now-fixed example: `require_organization_role`'s dependency factory had a sibling,
+`require_branch_access`, that was never wired into any router but still shipped a real IDOR — for
+`ORGANIZATION_ADMIN` it granted access to *any* `branch_id` without ever checking that the branch
+belonged to the `store_id` in the URL (only `has_branch_access`'s admin short-circuit ran, not the
+`branch.store_id == store_id` check). It had zero call sites, so nothing was exploitable in
+practice, but it's exactly the shape section 6 of the hardening pass exists to catch — dead code is
+still a liability if something wires it up later. Fixed by delegating to
+`OrganizationMemberService.authorize_branch(store_id, member, branch_id)`, the one method every
+live branch-scoped endpoint (catalog, pricing, promotions, coupons) already funnels through
+correctly.
+
+**Array-param batch endpoints authorize per item, not once for the whole request.**
+`POST /pricing/batch` and `POST /catalog/products/{id}/branches` both take a list of IDs
+(`store_product_id`s / `branch_id`s); each one is checked against the caller's own branch access
+independently, so a single out-of-scope ID in an otherwise-valid batch fails only that item
+(`failed`/`forbidden` in the response) and never blocks, silently drops, or grants access to the
+rest of the batch. Regression-tested for both the same-org branch-scope case (an employee's batch
+mixing an in-scope and an out-of-scope branch) and the cross-org case (a `branch_id` from a
+different organization entirely).
+
+**Mass assignment**: every B2B `PATCH`/`Update` Pydantic schema (organizations members/branches,
+promotions, coupons, catalog, pricing, reports) is an explicit allow-list — none of them expose
+`organization_id`, `store_id`, `created_by`, `published_by`, `version`, or an unauthorized `role`/
+`status` field for the client to set. Optimistic-concurrency fields like `version` are always
+read from the loaded row server-side, never trusted from the request body.
+
+**CORS & config (spec section 28)**: `backend/app/core/config.py`'s `cors_origins` defaults to
+`["http://localhost:5173"]` (web-admin's local Vite dev origin) — deliberately *not* `["*"]`,
+because `CORSMiddleware` is configured with `allow_credentials=True`, and wildcard-origin plus
+credentials is treated by browsers (and Starlette) as "reflect any Origin back," which defeats CORS
+entirely. Any real deployment must set `CORS_ORIGINS` (a JSON array, e.g.
+`["https://admin.prezio.example"]`) via env — see `backend/.env.template`.
+
+**Token storage (reviewed, not changed)**: `web-admin` stores both its access and refresh tokens in
+plain `localStorage` (`web-admin/src/shared/services/storage/tokenStorage.ts`). This is a known
+XSS-exposure risk — any injected script can read both tokens — but moving to httpOnly cookies is an
+auth-architecture change, out of scope for a hardening pass that must not add new features or
+rearchitect existing ones. Flagged here as a real, open risk rather than silently left undocumented.
+
+**Why the exit gate (section 43) matters in practice**: this same hardening pass hit a real,
+pre-existing `tsc -b`/`vite build` failure in `web-admin` (7 `TS2769` errors from MUI's `Stack`
+rejecting `alignItems`/`justifyContent` as direct props under this project's TypeScript version) that
+had nothing to do with authorization — but a broken build is still a shipped-broken build, and no
+amount of correct backend authorization matters if the frontend a manager needs to view analytics on
+simply won't compile. Treating "backend tests pass" as sufficient to call a phase done, without also
+requiring a clean typecheck/lint/build, would have let this regression through; the exit gate exists
+precisely so that a security-hardening pass doesn't ship a portal nobody can build.
+
+**Known test-coverage gap for the final report**: `web-admin` has no test framework configured at
+all (no `vitest`/`jest` in `package.json`, no test script) — every guarantee above for the frontend
+(role-gated UI, error boundary, build/lint/typecheck) is currently verified by static tooling only,
+not by any frontend test suite. Logged as tech debt, not fixed in this phase (adding a test
+framework is itself a scope decision, not a hardening fix).
+
 ## Running the backend
 
 Dependencies are managed with **uv**.

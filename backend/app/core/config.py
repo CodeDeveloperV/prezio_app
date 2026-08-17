@@ -19,7 +19,12 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
 
-    cors_origins: list[str] = ["*"]
+    # `allow_credentials=True` in app.main's CORSMiddleware means this must NEVER default to
+    # ["*"] in production -- browsers (and Starlette itself) treat wildcard-plus-credentials as
+    # "reflect any Origin", which defeats CORS entirely. The default here is web-admin's local
+    # Vite dev server only; production deployments must set CORS_ORIGINS to the real web-admin
+    # domain(s) via env.
+    cors_origins: list[str] = ["http://localhost:5173"]
 
     # Store comparator domain policy (see app.features.comparison): a branch's total is only
     # trusted for ranking/savings when at least this fraction of the list's products resolved

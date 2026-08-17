@@ -812,3 +812,45 @@ async def test_get_effective_promotion_returns_none_without_active_promotions(as
         result = await service.get_effective_promotion(store_id, branch_id, product_id, Decimal("10.00"))
 
     assert result is None
+
+
+# --- multi-tenant isolation: a promotion belonging to org B must never be reachable through org A's URL space ---
+
+
+async def test_branch_belonging_to_a_different_organization_is_rejected(async_client: AsyncClient) -> None:
+    """`branch_ids` is an array param the client fully controls -- creating a promotion must
+    authorize every branch_id against the caller's own org, not just accept whatever IDs
+    arrive in the payload (mirrors the equivalent coupons test)."""
+    store_a_id, _ = await seed_store(async_client, "Super A")
+    _, other_branch_id = await seed_store(async_client, "Super B")
+    admin_a_token = await _admin(async_client, store_a_id, "admin-a-branch-idor@example.com")
+
+    response = await create_promotion(
+        async_client, store_a_id, admin_a_token, special_price_payload(branch_ids=[other_branch_id])
+    )
+
+    assert response.status_code == 400
+
+
+async def test_organization_a_cannot_reach_organization_bs_promotion(async_client: AsyncClient) -> None:
+    store_a, _ = await seed_store(async_client, "Super A")
+    store_b, branch_b = await seed_store(async_client, "Super B")
+    admin_a_token = await _admin(async_client, store_a, "admin-a@example.com")
+    admin_b_token = await _admin(async_client, store_b, "admin-b@example.com")
+    product_id = await add_product(async_client)
+
+    created = await create_promotion(
+        async_client, store_b, admin_b_token, special_price_payload(branch_ids=[branch_b], product_ids=[product_id])
+    )
+    promotion_id = created.json()["id"]
+    url_in_a = f"{PROMOTIONS_URL.format(store_id=store_a)}/{promotion_id}"
+
+    update_payload = special_price_payload(branch_ids=[branch_b], product_ids=[product_id], name="Hijacked")
+    get_response = await async_client.get(url_in_a, headers=auth(admin_a_token))
+    update_response = await async_client.patch(url_in_a, json=update_payload, headers=auth(admin_a_token))
+    publish_response = await async_client.post(f"{url_in_a}/publish", headers=auth(admin_a_token))
+    cancel_response = await async_client.post(f"{url_in_a}/cancel", headers=auth(admin_a_token))
+    delete_response = await async_client.delete(url_in_a, headers=auth(admin_a_token))
+
+    for response in (get_response, update_response, publish_response, cancel_response, delete_response):
+        assert response.status_code == 404, response.request.method

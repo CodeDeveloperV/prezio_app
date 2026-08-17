@@ -34,7 +34,7 @@ export function KpiCard({ label, value, loading, helperText, trend, color = 'def
 
   return (
     <Paper variant="outlined" sx={{ p: 2, minWidth: 180, flex: 1 }}>
-      <Stack direction="row" spacing={0.5} alignItems="center">
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Typography variant="caption" color="text.secondary">
           {label}
         </Typography>
@@ -58,7 +58,7 @@ export function KpiCard({ label, value, loading, helperText, trend, color = 'def
         </Typography>
       )}
       {trendInfo && !loading && (
-        <Stack direction="row" spacing={0.5} alignItems="center">
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           <trendInfo.Icon size={14} color={trendInfo.color === 'success.main' ? '#2e7d32' : '#d32f2f'} />
           <Typography variant="caption" sx={{ color: trendInfo.color }}>
             {trendInfo.text}

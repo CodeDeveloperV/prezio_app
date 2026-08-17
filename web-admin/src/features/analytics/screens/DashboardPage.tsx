@@ -46,7 +46,7 @@ export function DashboardPage() {
         </Alert>
       )}
 
-      <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }} alignItems="center">
+      <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         {!isEmployee && <DateRangeFilter preset={preset} range={range} onChange={(p, r) => { setPreset(p); setRange(r); }} />}
         <BranchFilter branches={branches} value={branchIds} onChange={setBranchIds} />
       </Stack>
@@ -124,7 +124,7 @@ export function DashboardPage() {
           ) : (
             <Stack spacing={1}>
               {activityQuery.data?.items.map((item, index) => (
-                <Stack key={index} direction="row" justifyContent="space-between" sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>
+                <Stack key={index} direction="row" sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 0.5, justifyContent: 'space-between' }}>
                   <Typography variant="body2">
                     {item.description}
                     {item.branch_name ? ` · ${item.branch_name}` : ''}

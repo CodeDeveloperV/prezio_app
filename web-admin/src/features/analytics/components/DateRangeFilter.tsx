@@ -17,7 +17,7 @@ export interface DateRangeFilterProps {
 export function DateRangeFilter({ preset, range, onChange }: DateRangeFilterProps) {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+      <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           label="Rango"
           size="small"

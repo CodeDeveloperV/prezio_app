@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -17,6 +18,8 @@ from app.features.pricing.repository import (
 from app.features.pricing.schemas import PriceHistoryRead, PriceHistoryUpdatedByRead
 from app.features.reputation.enums import ReputationAction
 from app.features.reputation.service import ReputationService
+
+logger = logging.getLogger(__name__)
 
 
 class PricingService:
@@ -85,6 +88,12 @@ class PricingService:
             current = await self.store_products.get_by_id(store_product_id)
             if current is None:
                 raise StoreProductNotFound(store_product_id)
+            logger.warning(
+                "Pricing conflict: store_product_id=%d expected_version=%d actual_version=%d",
+                store_product_id,
+                expected_version,
+                current.version,
+            )
             raise PriceVersionConflict(current.current_price, current.version, current.availability)
 
         if price is not None:

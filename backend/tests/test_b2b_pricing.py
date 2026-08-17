@@ -357,6 +357,48 @@ async def test_batch_rejects_a_store_product_from_another_organization(async_cli
         assert listing.current_price == Decimal("3.00")  # untouched
 
 
+async def test_batch_authorizes_each_item_against_the_employees_own_branch_scope(async_client: AsyncClient) -> None:
+    """An array-param endpoint like batch pricing must authorize every item individually --
+    a single in-scope item must never let an out-of-scope item in the same request slip through."""
+    store_id, branch_id = await seed_store(async_client)
+    other_branch_id = await add_branch(async_client, store_id, "Super 99 - El Dorado", "Ciudad de Panamá")
+    product_id = await add_product(async_client)
+    listing_in_scope = await add_listing(async_client, branch_id, product_id, price="1.50")
+    product_b_id = await add_product(async_client, "Pan integral")
+    listing_out_of_scope = await add_listing(async_client, other_branch_id, product_b_id, price="3.00")
+
+    employee_id, employee_token = await register_and_login(async_client, "employee-batch@example.com")
+    member_id = await add_membership(async_client, store_id, employee_id, "employee")
+    await grant_branch_access(async_client, member_id, branch_id)
+
+    response = await async_client.post(
+        f"/b2b/organizations/{store_id}/pricing/batch",
+        json={
+            "items": [
+                {"store_product_id": listing_in_scope, "price": "1.75", "version": 1},
+                {"store_product_id": listing_out_of_scope, "price": "3.50", "version": 1},
+            ]
+        },
+        headers=auth(employee_token),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["updated"]) == 1
+    assert body["updated"][0]["store_product_id"] == listing_in_scope
+    assert len(body["failed"]) == 1
+    assert body["failed"][0]["store_product_id"] == listing_out_of_scope
+    assert body["failed"][0]["error"] == "forbidden"
+
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    from app.features.pricing.models import StoreProduct
+
+    async with session_factory() as session:
+        listing = await session.get(StoreProduct, listing_out_of_scope)
+        assert listing is not None
+        assert listing.current_price == Decimal("3.00")  # untouched
+
+
 async def test_successful_update_publishes_the_existing_realtime_event(async_client: AsyncClient) -> None:
     store_id, branch_id = await seed_store(async_client)
     product_id = await add_product(async_client)

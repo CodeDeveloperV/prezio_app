@@ -34,6 +34,7 @@ function lifecycleSeries(counts: { active: number; scheduled: number; expired: n
 export function AnalyticsPage() {
   const activeMembership = useActiveMembership();
   const storeId = activeMembership?.organization.id ?? null;
+  const canViewAnalytics = activeMembership?.role === 'organization_admin' || activeMembership?.role === 'manager';
 
   const [preset, setPreset] = useState<DateRangePreset>('last_30_days');
   const [range, setRange] = useState<DateRange>(() => resolvePresetRange('last_30_days', { from: new Date(), to: new Date() }));
@@ -42,11 +43,11 @@ export function AnalyticsPage() {
   const { branches } = useScopedBranches(storeId);
   const rangeFilters = { date_from: range.from.toISOString(), date_to: range.to.toISOString(), branch_ids: branchIds };
 
-  const pricingQuery = usePricingAnalytics(storeId, rangeFilters);
-  const availabilityQuery = useAvailabilityAnalytics(storeId, branchIds);
-  const promotionsQuery = usePromotionsAnalytics(storeId, branchIds);
-  const couponsQuery = useCouponsAnalytics(storeId, branchIds);
-  const reportsQuery = useReportsAnalytics(storeId, rangeFilters);
+  const pricingQuery = usePricingAnalytics(canViewAnalytics ? storeId : null, rangeFilters);
+  const availabilityQuery = useAvailabilityAnalytics(canViewAnalytics ? storeId : null, branchIds);
+  const promotionsQuery = usePromotionsAnalytics(canViewAnalytics ? storeId : null, branchIds);
+  const couponsQuery = useCouponsAnalytics(canViewAnalytics ? storeId : null, branchIds);
+  const reportsQuery = useReportsAnalytics(canViewAnalytics ? storeId : null, rangeFilters);
 
   const pricing = pricingQuery.data;
   const availability = availabilityQuery.data;
@@ -77,13 +78,24 @@ export function AnalyticsPage() {
     { field: 'count', headerName: 'Cantidad', flex: 1 },
   ];
 
+  if (!canViewAnalytics) {
+    return (
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
+          Analítica
+        </Typography>
+        <Alert severity="info">Solo administradores y gerentes de la organización pueden ver la analítica.</Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
         Analítica
       </Typography>
 
-      <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }} alignItems="center">
+      <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <DateRangeFilter preset={preset} range={range} onChange={(p, r) => { setPreset(p); setRange(r); }} />
         <BranchFilter branches={branches} value={branchIds} onChange={setBranchIds} />
       </Stack>

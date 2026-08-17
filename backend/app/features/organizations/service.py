@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.organizations.enums import OrganizationMemberStatus, OrganizationRole
@@ -24,6 +26,8 @@ from app.features.organizations.schemas import (
 from app.features.stores.models import StoreBranch
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
 from app.features.stores.schemas import StoreBranchRead
+
+logger = logging.getLogger(__name__)
 from app.features.users.repository import UserRepository
 
 
@@ -59,8 +63,19 @@ class OrganizationMembershipService:
         `BranchAccessDenied`). Returns the branch so callers that need it skip a re-fetch."""
         branch = await self.store_branches.get_by_id(branch_id)
         if branch is None or branch.store_id != store_id:
+            logger.warning(
+                "Authorization denied: member=%d store_id=%d requested out-of-organization branch_id=%d",
+                member.id,
+                store_id,
+                branch_id,
+            )
             raise InvalidBranchForOrganization(branch_id)
         if not await self.has_branch_access(member, branch_id):
+            logger.warning(
+                "Authorization denied: member=%d has no access grant for branch_id=%d",
+                member.id,
+                branch_id,
+            )
             raise BranchAccessDenied(branch_id)
         return branch
 

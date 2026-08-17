@@ -152,11 +152,31 @@ async def test_organization_a_cannot_access_organization_b_report(async_client: 
         async_client, reporter_id, store_id=store_b, store_product_id=sp_b, store_branch_id=branch_b
     )
 
-    response = await async_client.get(
-        f"{REPORTS_URL.format(store_id=store_a)}/{report_id}", headers=auth(admin_a_token)
+    url_in_a = f"{REPORTS_URL.format(store_id=store_a)}/{report_id}"
+    get_response = await async_client.get(url_in_a, headers=auth(admin_a_token))
+    take_response = await async_client.post(f"{url_in_a}/take", headers=auth(admin_a_token))
+    status_response = await async_client.patch(
+        f"{url_in_a}/status", json={"status": "in_review"}, headers=auth(admin_a_token)
     )
+    assign_response = await async_client.post(f"{url_in_a}/assign", json={}, headers=auth(admin_a_token))
+    priority_response = await async_client.patch(
+        f"{url_in_a}/priority", json={"priority": "high"}, headers=auth(admin_a_token)
+    )
+    resolve_response = await async_client.post(
+        f"{url_in_a}/resolve", json={"resolution_type": "price_updated"}, headers=auth(admin_a_token)
+    )
+    dismiss_response = await async_client.post(f"{url_in_a}/dismiss", json={}, headers=auth(admin_a_token))
 
-    assert response.status_code == 404
+    for response in (
+        get_response,
+        take_response,
+        status_response,
+        assign_response,
+        priority_response,
+        resolve_response,
+        dismiss_response,
+    ):
+        assert response.status_code == 404, response.request.method
 
 
 # --- lifecycle transitions (spec section 6) -------------------------------------------------

@@ -1,7 +1,9 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.alert_scheduler import alert_scheduler
 from app.core.config import get_settings
@@ -29,6 +31,8 @@ from app.features.shopping_lists.router import router as shopping_lists_router
 from app.features.stores.router import router as stores_router
 from app.features.users.router import router as users_router
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
 
@@ -50,6 +54,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Never let an unexpected exception's message (which may embed request data) leak to the
+    # client -- log the full detail server-side, return a generic body to the caller.
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    # This handler runs in ServerErrorMiddleware, *outside* CORSMiddleware, so its response
+    # would otherwise skip CORS header injection entirely -- the browser would report a CORS
+    # failure and hide the real 500 from the caller. Add the headers here so error responses
+    # from real bugs are still visible client-side.
+    origin = request.headers.get("origin")
+    if origin in settings.cors_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 app.include_router(auth_router)
 app.include_router(users_router)

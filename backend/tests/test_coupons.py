@@ -159,6 +159,26 @@ async def test_org_isolation_cannot_access_other_orgs_coupon(async_client: Async
     assert response.status_code == 404
 
 
+async def test_org_isolation_across_every_coupon_mutation_endpoint(async_client: AsyncClient) -> None:
+    store_a_id, _ = await seed_store(async_client, "Super 99")
+    store_b_id, _ = await seed_store(async_client, "Rey")
+    admin_a_token = await _admin(async_client, store_a_id, "admin-a@example.com")
+    admin_b_token = await _admin(async_client, store_b_id, "admin-b@example.com")
+    created = await create_coupon(async_client, store_a_id, admin_a_token, coupon_payload())
+    coupon_id = created.json()["id"]
+    url_in_b = f"{COUPONS_URL.format(store_id=store_b_id)}/{coupon_id}"
+
+    update_payload = coupon_payload(name="Hijacked")
+    get_response = await async_client.get(url_in_b, headers=auth(admin_b_token))
+    update_response = await async_client.patch(url_in_b, json=update_payload, headers=auth(admin_b_token))
+    publish_response = await async_client.post(f"{url_in_b}/publish", headers=auth(admin_b_token))
+    cancel_response = await async_client.post(f"{url_in_b}/cancel", headers=auth(admin_b_token))
+    delete_response = await async_client.delete(url_in_b, headers=auth(admin_b_token))
+
+    for response in (get_response, update_response, publish_response, cancel_response, delete_response):
+        assert response.status_code == 404, response.request.method
+
+
 # --- code uniqueness ----------------------------------------------------------
 
 

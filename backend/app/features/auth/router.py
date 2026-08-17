@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,8 @@ from app.features.auth.schemas import (
 from app.features.auth.service import AuthService
 from app.features.users.schemas import UserRead
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -36,6 +40,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> To
     try:
         return await AuthService(db).login(payload.email, payload.password)
     except InvalidCredentials as exc:
+        logger.warning("Failed login attempt for email=%s", payload.email)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password") from exc
 
 
@@ -44,6 +49,7 @@ async def login_google(payload: GoogleLoginRequest, db: AsyncSession = Depends(g
     try:
         return await AuthService(db).login_with_google(payload.id_token)
     except InvalidGoogleToken as exc:
+        logger.warning("Rejected Google login: invalid id_token")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google id_token") from exc
 
 
@@ -52,6 +58,7 @@ async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) -
     try:
         return await AuthService(db).refresh(payload.refresh_token)
     except InvalidRefreshToken as exc:
+        logger.warning("Rejected refresh: invalid or expired refresh token")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token") from exc
 
 
