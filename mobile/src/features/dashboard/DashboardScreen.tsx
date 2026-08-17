@@ -19,6 +19,7 @@ import { MonthStatsCard } from './components/MonthStatsCard';
 import { MostPurchasedList } from './components/MostPurchasedList';
 import { SpendTrendChart } from './components/SpendTrendChart';
 import { listShoppingListItems, listShoppingLists } from '../shopping-lists/api/shoppingListsApi';
+import { selectActiveShoppingList } from '../shopping-lists/utils/selectActiveShoppingList';
 import { useDashboardQuery } from './hooks/useDashboardQuery';
 
 const analyticsCtaPressStyle = { opacity: 0.7 };
@@ -32,11 +33,7 @@ export function DashboardScreen() {
     queryFn: listShoppingLists,
   });
 
-  const activeShoppingList =
-    shoppingListsQuery.data
-      ?.slice()
-      .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
-      .find((list) => list.status === 'active') ?? null;
+  const activeShoppingList = selectActiveShoppingList(shoppingListsQuery.data);
 
   const activeShoppingListItemsQuery = useQuery<ShoppingListItem[], Error>({
     queryKey: ['shoppingLists', activeShoppingList?.id, 'items'],
@@ -84,7 +81,17 @@ export function DashboardScreen() {
         activeSessionName={activeShoppingList?.name ?? null}
         activeSessionMetric={activeShoppingList !== null ? activeSessionMetric : null}
         onPressPrimaryAction={() => {
-          navigation.navigate('NewPurchase');
+          if (activeShoppingList) {
+            navigation.navigate('NewPurchase', {
+              screen: 'Scan',
+              params: {
+                storeBranchId: activeShoppingList.active_store_branch_id ?? undefined,
+                scanFlow: 'purchase',
+              },
+            });
+          } else {
+            navigation.navigate('NewPurchase', { screen: 'BranchSelect', params: {} });
+          }
         }}
       />
 

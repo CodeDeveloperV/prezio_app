@@ -61,6 +61,46 @@ class ProductRepository(BaseRepository[Product]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def search_by_query(self, query: str, *, limit: int = 20) -> list[Product]:
+        """Broad text search backing the manual scan fallback.
+
+        Uses substring matching across the canonical product name, aliases, brand name,
+        presentation, and any attached barcode strings. The caller already enforces a minimum
+        query length, so this stays intentionally permissive instead of trying to "help" with
+        fuzzy ranking before the user has enough text to be specific.
+        """
+        pattern = f"%{query.strip()}%"
+        barcode_match = (
+            select(ProductBarcode.id)
+            .where(ProductBarcode.product_id == Product.id, ProductBarcode.barcode.ilike(pattern))
+            .exists()
+        )
+        alias_match = (
+            select(ProductAlias.id)
+            .where(ProductAlias.product_id == Product.id, ProductAlias.alias.ilike(pattern))
+            .exists()
+        )
+        brand_match = select(Brand.id).where(Brand.id == Product.brand_id, Brand.name.ilike(pattern)).exists()
+
+        stmt = (
+            select(Product)
+            .where(Product.status != ModerationStatus.MERGED)
+            .where(
+                or_(
+                    Product.canonical_name.ilike(pattern),
+                    Product.presentation.ilike(pattern),
+                    barcode_match,
+                    alias_match,
+                    brand_match,
+                )
+            )
+            .order_by(Product.canonical_name.asc())
+            .distinct()
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def list_by_status(self, status: ModerationStatus) -> list[Product]:
         result = await self.session.execute(select(Product).where(Product.status == status))
         return list(result.scalars().all())
@@ -155,6 +195,24 @@ class ProductBarcodeRepository(BaseRepository[ProductBarcode]):
                 or_(ProductBarcode.store_id == store_id, ProductBarcode.store_id.is_(None)),
             )
             .order_by(ProductBarcode.store_id.is_(None))
+        )
+        return list(result.scalars().all())
+
+    async def find_matches_for_lookup_any_store(self, barcode: str) -> list[ProductBarcode]:
+        """Barcode lookup without store context.
+
+        This powers the quick-scan flow: we want the canonical product behind the barcode,
+        even if the user has not chosen a branch yet. Rejected rows are still skipped so a
+        barcode previously flagged as incorrect can fall back to manual resolution instead of
+        getting stuck on the wrong product forever.
+        """
+        result = await self.session.execute(
+            select(ProductBarcode)
+            .where(
+                ProductBarcode.barcode == barcode,
+                ProductBarcode.status != ModerationStatus.REJECTED,
+            )
+            .order_by(ProductBarcode.store_id.is_(None).desc(), ProductBarcode.id.asc())
         )
         return list(result.scalars().all())
 

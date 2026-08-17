@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
@@ -7,6 +8,7 @@ from app.features.catalog.enums import BarcodeSource, BarcodeType, RecognitionTy
 from app.features.pricing.schemas import StoreProductRead
 from app.shared.base_schemas import ORMModel
 from app.shared.enums import ModerationStatus
+from app.features.pricing.enums import Availability
 
 
 class CategoryRead(ORMModel):
@@ -72,7 +74,7 @@ class ProductAliasRead(ORMModel):
 class ScanBarcodeRequest(BaseModel):
     barcode: str
     barcode_type: BarcodeType = BarcodeType.OTHER
-    store_branch_id: int
+    store_branch_id: int | None = None
     country: str | None = None
     # Hints used only to search for candidates when the barcode is unknown -- none of
     # these identify the product on their own, they only feed the matcher's scoring.
@@ -95,11 +97,28 @@ class ScanProductDetails(BaseModel):
     status: ModerationStatus
 
 
+class ScanPriceOfferRead(BaseModel):
+    store_product_id: int
+    store_branch_id: int
+    store_name: str
+    store_branch_name: str
+    current_price: Decimal
+    currency: str
+    availability: Availability
+    last_verified_at: datetime | None
+
+
+class CatalogSearchResultRead(BaseModel):
+    product: ScanProductDetails
+    store_product: StoreProductRead | None = None
+
+
 class ScanFoundResult(BaseModel):
     status: Literal["found"] = "found"
     barcode_id: int  # lets the client call POST /catalog/barcodes/{barcode_id}/report ("Producto incorrecto")
     product: ScanProductDetails
     store_product: StoreProductRead | None
+    price_offers: list[ScanPriceOfferRead] = Field(default_factory=list)
 
 
 class ProductMatchCandidate(BaseModel):

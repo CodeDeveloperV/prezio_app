@@ -130,7 +130,7 @@ const AuthField = forwardRef<
         fontFamily="$body"
         fontSize="$md"
         color="$color"
-        placeholderTextColor={colorTokens.textSecondary}
+        placeholderTextColor="$colorSecondary"
         {...inputProps}
       />
       {trailing ? (
@@ -164,7 +164,7 @@ export function LoginScreen({ navigation }: Props) {
         onError: () =>
           showAuthErrorToast({
             title: 'No pudimos iniciar sesión',
-            message: 'Revisá tus datos e intentá de nuevo.',
+            message: 'Revisa tus datos e intenta de nuevo.',
           }),
       },
     );
@@ -177,13 +177,13 @@ export function LoginScreen({ navigation }: Props) {
         onError: () =>
           showAuthErrorToast({
             title: 'No pudimos continuar con Google',
-            message: 'Intentá de nuevo en unos segundos.',
+            message: 'Intenta de nuevo en unos segundos.',
           }),
       });
     } catch {
       showAuthErrorToast({
         title: 'No pudimos continuar con Google',
-        message: 'Revisá tu conexión e intentá de nuevo.',
+        message: 'Revisa tu conexión e intenta de nuevo.',
       });
     }
   };
@@ -224,7 +224,7 @@ export function LoginScreen({ navigation }: Props) {
               textAlign="center"
               maxWidth={280}
             >
-              Iniciá sesión para seguir tus listas y comparar precios más rápido.
+              Inicia sesión para seguir tus listas y comparar precios más rápido.
             </Text>
           </YStack>
         </YStack>
@@ -362,7 +362,7 @@ export function LoginScreen({ navigation }: Props) {
 
         <XStack justifyContent="center" gap="$1">
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-            ¿No tenés cuenta?
+            ¿No tienes cuenta?
           </Text>
           <Text
             onPress={() => navigation.navigate('Register')}

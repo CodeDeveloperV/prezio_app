@@ -78,21 +78,21 @@ function CandidateRow({
  * one of the ranked candidates (attaches only a new ProductBarcode) or say none match
  * (falls through to CreateProduct, a brand-new Product in PENDING). */
 export function ScanDisambiguationScreen({ route, navigation }: Props) {
-  const { storeBranchId, barcode, barcodeType, candidates } = route.params;
+  const { storeBranchId, scanFlow = 'quick', barcode, barcodeType, candidates } = route.params;
   const attachBarcodeMutation = useAttachBarcodeMutation();
   const [selectedCandidateId, setSelectedCandidateId] = useState<number | null>(null);
 
   const handleSelectCandidate = (candidate: ProductMatchCandidate) => {
     setSelectedCandidateId(candidate.product.id);
-    attachBarcodeMutation.mutate(
-      {
-        productId: candidate.product.id,
-        request: { barcode, barcode_type: barcodeType },
-      },
-      {
-        onSuccess: () => navigation.replace('Scan', { storeBranchId }),
-      },
-    );
+      attachBarcodeMutation.mutate(
+        {
+          productId: candidate.product.id,
+          request: { barcode, barcode_type: barcodeType },
+        },
+        {
+          onSuccess: () => navigation.replace('Scan', { storeBranchId: storeBranchId ?? undefined, scanFlow }),
+        },
+      );
   };
 
   return (
@@ -121,7 +121,7 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
                 Encontramos varias coincidencias
               </Text>
               <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-                Elegí el producto correcto o creá uno nuevo si ninguno coincide.
+                Elige el producto correcto o crea uno nuevo si ninguno coincide.
               </Text>
             </YStack>
           </XStack>
@@ -153,7 +153,14 @@ export function ScanDisambiguationScreen({ route, navigation }: Props) {
           <Button
             backgroundColor="$primary"
             color="$white"
-            onPress={() => navigation.replace('CreateProduct', { storeBranchId, barcode, barcodeType })}
+            onPress={() =>
+              navigation.replace(
+                'CreateProduct',
+                storeBranchId == null
+                  ? { barcode, barcodeType, scanFlow }
+                  : { storeBranchId, barcode, barcodeType, scanFlow },
+              )
+            }
           >
             Crear producto
           </Button>

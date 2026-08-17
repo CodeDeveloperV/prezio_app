@@ -77,7 +77,7 @@ class B2BPricingService:
 
         product_ids: list[int] | None = None
         if name or barcode or category_id is not None:
-            matching_products = await self.catalog.search_products(
+            matching_products = await self.catalog.filter_products(
                 name=name, barcode=barcode, category_id=category_id, brand_id=None, status=None
             )
             product_ids = [p.id for p in matching_products]

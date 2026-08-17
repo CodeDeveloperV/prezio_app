@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
+import { Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Button, Card, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import { useAuthStore } from '../../../shared/store/authStore';
@@ -12,6 +14,7 @@ import {
   IconChartBar,
   IconChevronRight,
   IconMail,
+  IconPower,
   IconReceipt,
   IconUser,
 } from '../../../app/theme/icons';
@@ -20,23 +23,94 @@ import type { ProfileStackParamList } from '../../../app/navigation/types';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Profile'>;
 const rowPressStyle = { opacity: 0.7 };
+const logoutPressStyle = { opacity: 0.7 };
+
+function formatMemberSince(createdAt: string): string {
+  const label = new Date(createdAt).toLocaleDateString('es-PA', { month: 'long', year: 'numeric' });
+  return `Miembro desde ${label}`;
+}
+
+interface ProfileMenuRowProps {
+  icon: ReactNode;
+  label: string;
+  onPress: () => void;
+}
+
+/** Shared row shape for every navigable profile entry: same badge, radius, and
+ * spacing so the menu reads as one group, matching sibling list rows (e.g.
+ * ShoppingListRow) elsewhere in the app. */
+function ProfileMenuRow({ icon, label, onPress }: ProfileMenuRowProps) {
+  return (
+    <XStack
+      onPress={onPress}
+      backgroundColor="$surface"
+      borderRadius="$3"
+      padding="$3"
+      alignItems="center"
+      gap="$3"
+      pressStyle={rowPressStyle}
+    >
+      <YStack
+        width={40}
+        height={40}
+        borderRadius="$2"
+        backgroundColor="$background"
+        alignItems="center"
+        justifyContent="center"
+      >
+        {icon}
+      </YStack>
+      <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
+        {label}
+      </Text>
+      <IconChevronRight color={colorTokens.textSecondary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+    </XStack>
+  );
+}
+
+function ProfileMenuGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <YStack gap="$2">
+      <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" paddingHorizontal="$1">
+        {label}
+      </Text>
+      <YStack gap="$2">{children}</YStack>
+    </YStack>
+  );
+}
 
 export function ProfileScreen({ navigation }: Props) {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
 
+  const handleLogout = () => {
+    Alert.alert('Cerrar sesión', 'Vas a salir de tu cuenta de Prezio en este dispositivo.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
+    ]);
+  };
+
   return (
-    <ScreenContainer scroll={false}>
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$4">
+    <ScreenContainer>
+      <Card
+        elevation={2}
+        backgroundColor="$surface"
+        borderWidth={1}
+        borderColor="$borderColor"
+        borderRadius="$4"
+        padding="$5"
+        alignItems="center"
+        gap="$3"
+      >
         <YStack
           width={72}
           height={72}
           borderRadius="$full"
-          backgroundColor="$surface"
+          backgroundColor="rgba(34, 197, 94, 0.14)"
           alignItems="center"
           justifyContent="center"
         >
-          <IconUser color={colorTokens.textPrimary} size={32} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
+          <IconUser color={colorTokens.primary} size={32} strokeWidth={SUBTLE_ICON_STROKE_WIDTH} />
         </YStack>
 
         <YStack alignItems="center" gap="$1">
@@ -46,125 +120,62 @@ export function ProfileScreen({ navigation }: Props) {
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
             Prezio: tu aliado en cada compra
           </Text>
+          {user?.created_at && (
+            <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+              {formatMemberSince(user.created_at)}
+            </Text>
+          )}
         </YStack>
+      </Card>
 
-        <YStack width="100%" gap="$2">
-          <XStack
-            onPress={() => navigation.navigate('ShoppingLists')}
-            backgroundColor="$surface"
-            borderRadius="$3"
-            padding="$3"
-            alignItems="center"
-            gap="$3"
-            pressStyle={rowPressStyle}
-          >
-            <IconReceipt color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
-              Mis listas
-            </Text>
-            <IconChevronRight
-              color={colorTokens.textSecondary}
-              size={18}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-          </XStack>
+      <ProfileMenuGroup label="Compras">
+        <ProfileMenuRow
+          icon={<IconReceipt color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          label="Mis listas"
+          onPress={() => navigation.navigate('ShoppingLists')}
+        />
+        <ProfileMenuRow
+          icon={<IconMail color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          label="Invitaciones"
+          onPress={() => navigation.navigate('ShoppingListInvitations')}
+        />
+        <ProfileMenuRow
+          icon={<IconChartBar color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          label="Estadísticas"
+          onPress={() => navigation.navigate('Analytics')}
+        />
+      </ProfileMenuGroup>
 
-          <XStack
-            onPress={() => navigation.navigate('ShoppingListInvitations')}
-            backgroundColor="$surface"
-            borderRadius="$3"
-            padding="$3"
-            alignItems="center"
-            gap="$3"
-            pressStyle={rowPressStyle}
-          >
-            <IconMail color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
-              Invitaciones
-            </Text>
-            <IconChevronRight
-              color={colorTokens.textSecondary}
-              size={18}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-          </XStack>
+      <ProfileMenuGroup label="Alertas">
+        <ProfileMenuRow
+          icon={<IconBellRinging color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          label="Mis alertas"
+          onPress={() => navigation.navigate('Alerts')}
+        />
+        <ProfileMenuRow
+          icon={<IconBell color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+          label="Notificaciones"
+          onPress={() => navigation.navigate('Notifications')}
+        />
+      </ProfileMenuGroup>
 
-          <XStack
-            onPress={() => navigation.navigate('Analytics')}
-            backgroundColor="$surface"
-            borderRadius="$3"
-            padding="$3"
-            alignItems="center"
-            gap="$3"
-            pressStyle={rowPressStyle}
-          >
-            <IconChartBar color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
-              Estadísticas
-            </Text>
-            <IconChevronRight
-              color={colorTokens.textSecondary}
-              size={18}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-          </XStack>
+      <Button
+        onPress={handleLogout}
+        backgroundColor="$surface"
+        borderRadius="$3"
+        color="$danger"
+        fontFamily="$heading"
+        fontSize="$sm"
+        minHeight={56}
+        paddingVertical="$4"
+        pressStyle={logoutPressStyle}
+        icon={<IconPower color={colorTokens.danger} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
+      >
+        Cerrar sesión
+      </Button>
 
-          <XStack
-            onPress={() => navigation.navigate('Alerts')}
-            backgroundColor="$surface"
-            borderRadius="$3"
-            padding="$3"
-            alignItems="center"
-            gap="$3"
-            pressStyle={rowPressStyle}
-          >
-            <IconBellRinging
-              color={colorTokens.textPrimary}
-              size={20}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
-              Mis alertas
-            </Text>
-            <IconChevronRight
-              color={colorTokens.textSecondary}
-              size={18}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-          </XStack>
-
-          <XStack
-            onPress={() => navigation.navigate('Notifications')}
-            backgroundColor="$surface"
-            borderRadius="$3"
-            padding="$3"
-            alignItems="center"
-            gap="$3"
-            pressStyle={rowPressStyle}
-          >
-            <IconBell color={colorTokens.textPrimary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-            <Text flex={1} fontFamily="$body" fontSize="$sm" color="$color">
-              Notificaciones
-            </Text>
-            <IconChevronRight
-              color={colorTokens.textSecondary}
-              size={18}
-              strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-            />
-          </XStack>
-        </YStack>
-
-        <Button
-          onPress={logout}
-          backgroundColor="$surface"
-          borderRadius="$3"
-          size="$4"
-        >
-          <Text fontFamily="$heading" fontSize="$sm" color="$danger">
-            Cerrar sesión
-          </Text>
-        </Button>
-      </YStack>
+      {/* Clears the floating scan tab's halo, which overhangs above the tab dock. */}
+      <YStack height={24} />
     </ScreenContainer>
   );
 }

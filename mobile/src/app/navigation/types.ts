@@ -2,6 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type {
   BarcodeType,
   ProductMatchCandidate,
+  ScanPriceOffer,
   ScanProductDetails,
   ShoppingListComparisonResult,
   StoreProductRead,
@@ -14,7 +15,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Dashboard: undefined;
-  NewPurchase: undefined;
+  NewPurchase: NavigatorScreenParams<ShoppingSessionStackParamList> | undefined;
   Comparator: undefined;
   History: undefined;
   // Undefined navigates to the tab's initial screen (Profile); passing { screen: 'X' } opens a
@@ -29,35 +30,46 @@ export type ComparisonStackParamList = {
   ComparatorResult: { result: ShoppingListComparisonResult };
 };
 
-// Nested stack rendered inside the "NewPurchase" tab: pick a branch, scan a barcode, then
-// either resolve to an existing product or fall through to disambiguation/creation.
+// Nested stack rendered inside the "NewPurchase" tab: open the camera first, optionally with
+// a branch context, then resolve a barcode to an existing product or fall through to
+// disambiguation/creation.
 export type ShoppingSessionStackParamList = {
-  BranchSelect: undefined;
-  Scan: { storeBranchId: number };
-  ScanResult: {
-    storeBranchId: number;
-    barcodeId: number;
-    product: ScanProductDetails;
-    storeProduct: StoreProductRead | null;
-    // True when this result came from the offline cache (Epic 14) instead of a live lookup --
-    // gates the online-only actions (confirm match, price update, report, alerts) and shows the
-    // price as a snapshot rather than a guaranteed-current value.
-    fromCache?: boolean;
+  BranchSelect: { pendingScan?: ScanResultProductContext } | undefined;
+  Scan: { storeBranchId?: number; scanFlow?: 'quick' | 'purchase' } | undefined;
+  ScanResult: ScanResultProductContext & {
+    storeBranchId?: number | null;
+    priceOffers?: ScanPriceOffer[];
+    scanFlow?: 'quick' | 'purchase';
   };
   ScanDisambiguation: {
-    storeBranchId: number;
+    storeBranchId?: number | null;
+    scanFlow?: 'quick' | 'purchase';
     barcode: string;
     barcodeType: BarcodeType;
     candidates: ProductMatchCandidate[];
   };
   CreateProduct: {
-    storeBranchId: number;
+    storeBranchId?: number | null;
+    scanFlow?: 'quick' | 'purchase';
     barcode: string;
     barcodeType: BarcodeType;
   };
   PriceHistory: { storeProductId: number };
   PriceUpdate: { storeProductId: number; currentPrice: string; version: number };
   CreateAlert: { productId: number; productName: string; storeBranchId?: number | null };
+};
+
+export type ScanResultProductContext = {
+  barcodeId?: number | null;
+  product: ScanProductDetails;
+  storeProduct: StoreProductRead | null;
+  priceOffers?: ScanPriceOffer[];
+  fromSearch?: boolean;
+  scanFlow?: 'quick' | 'purchase';
+  // True when this result came from the offline cache (Epic 14) instead of a live lookup --
+  // gates the online-only actions (confirm match, price update, report, alerts) and shows the
+  // price as a snapshot rather than a guaranteed-current value.
+  fromCache?: boolean;
 };
 
 // Nested stack rendered inside the "Profile" tab: the profile screen itself plus the

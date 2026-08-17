@@ -10,7 +10,7 @@ from app.core.redis import get_redis
 from app.features.auth.dependencies import get_current_user
 from app.features.b2b_analytics.repository import B2BAnalyticsRepository
 from app.features.b2b_analytics.service import B2BAnalyticsService
-from app.features.catalog.repository import CategoryRepository, ProductRepository
+from app.features.catalog.repository import BrandRepository, CategoryRepository, ProductRepository
 from app.features.catalog.service import CatalogService
 from app.features.coupons.repository import CouponBranchRepository, CouponProductRepository, CouponRepository
 from app.features.coupons.service import CouponService
@@ -57,7 +57,7 @@ def get_b2b_catalog_service(
 ) -> B2BCatalogService:
     return B2BCatalogService(
         db,
-        CatalogService(CategoryRepository(db), ProductRepository(db)),
+        CatalogService(CategoryRepository(db), ProductRepository(db), StoreProductRepository(db), BrandRepository(db)),
         membership,
         StoreProductRepository(db),
     )
@@ -82,7 +82,7 @@ def get_b2b_pricing_service(
         StoreProductRepository(db),
         PriceHistoryRepository(db),
         ProductRepository(db),
-        CatalogService(CategoryRepository(db), ProductRepository(db)),
+        CatalogService(CategoryRepository(db), ProductRepository(db), StoreProductRepository(db), BrandRepository(db)),
     )
 
 

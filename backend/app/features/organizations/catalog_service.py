@@ -51,7 +51,7 @@ class B2BCatalogService:
         category_id: int | None = None,
         status: ModerationStatus | None = None,
     ) -> list[CatalogProductSummary]:
-        products = await self.catalog.search_products(
+        products = await self.catalog.filter_products(
             name=name, barcode=barcode, brand_id=brand_id, category_id=category_id, status=status
         )
         branch_ids = [b.id for b in await self.membership.list_branches(store_id, member)]

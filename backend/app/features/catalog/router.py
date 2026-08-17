@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
@@ -17,14 +17,17 @@ from app.features.catalog.schemas import (
     AttachBarcodeRequest,
     BrandRead,
     CategoryRead,
+    CatalogSearchResultRead,
     CreateProductRequest,
     ProductBarcodeRead,
     ProductRead,
     ScanBarcodeRequest,
+    ScanProductDetails,
     ScanResult,
 )
 from app.features.catalog.service import CatalogService
 from app.features.pricing.repository import StoreProductRepository
+from app.features.pricing.schemas import StoreProductRead
 from app.features.reputation.repository import ReputationEventRepository
 from app.features.reputation.service import ReputationService
 from app.features.stores.exceptions import StoreBranchNotFound
@@ -35,7 +38,7 @@ router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
 def get_catalog_service(db: AsyncSession = Depends(get_db)) -> CatalogService:
-    return CatalogService(CategoryRepository(db), ProductRepository(db))
+    return CatalogService(CategoryRepository(db), ProductRepository(db), StoreProductRepository(db), BrandRepository(db))
 
 
 def get_recognition_service(db: AsyncSession = Depends(get_db)) -> ProductRecognitionService:
@@ -69,6 +72,29 @@ async def list_products(service: CatalogService = Depends(get_catalog_service)) 
 async def list_brands(db: AsyncSession = Depends(get_db)) -> list[BrandRead]:
     brands = await BrandRepository(db).list_all()
     return [BrandRead.model_validate(b) for b in brands]
+
+
+@router.get("/products/search", response_model=list[CatalogSearchResultRead])
+async def search_products(
+    q: str = Query(min_length=5),
+    store_branch_id: int | None = None,
+    service: CatalogService = Depends(get_catalog_service),
+) -> list[CatalogSearchResultRead]:
+    results = await service.search_products(q, store_branch_id)
+    return [
+        CatalogSearchResultRead(
+            product=ScanProductDetails(
+                id=hit.product.id,
+                canonical_name=hit.product.canonical_name,
+                brand_name=hit.brand_name,
+                presentation=hit.product.presentation,
+                image_url=hit.product.image_url,
+                status=hit.product.status,
+            ),
+            store_product=StoreProductRead.model_validate(hit.store_product) if hit.store_product else None,
+        )
+        for hit in results
+    ]
 
 
 @router.post("/scan", response_model=ScanResult)

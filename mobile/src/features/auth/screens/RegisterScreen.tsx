@@ -130,7 +130,7 @@ const AuthField = forwardRef<
         fontFamily="$body"
         fontSize="$md"
         color="$color"
-        placeholderTextColor={colorTokens.textSecondary}
+        placeholderTextColor="$colorSecondary"
         {...inputProps}
       />
       {trailing ? (
@@ -164,7 +164,7 @@ export function RegisterScreen({ navigation }: Props) {
         onError: () =>
           showAuthErrorToast({
             title: 'No pudimos crear tu cuenta',
-            message: 'Revisá tus datos e intentá de nuevo.',
+            message: 'Revisa tus datos e intenta de nuevo.',
           }),
       },
     );
@@ -177,13 +177,13 @@ export function RegisterScreen({ navigation }: Props) {
         onError: () =>
           showAuthErrorToast({
             title: 'No pudimos continuar con Google',
-            message: 'Intentá de nuevo en unos segundos.',
+            message: 'Intenta de nuevo en unos segundos.',
           }),
       });
     } catch {
       showAuthErrorToast({
         title: 'No pudimos continuar con Google',
-        message: 'Revisá tu conexión e intentá de nuevo.',
+        message: 'Revisa tu conexión e intenta de nuevo.',
       });
     }
   };
@@ -209,7 +209,7 @@ export function RegisterScreen({ navigation }: Props) {
 
           <YStack alignItems="center" gap="$2">
             <Text fontFamily="$heading" fontSize="$display" color="$color" textAlign="center">
-              Creá tu cuenta
+              Crea tu cuenta
             </Text>
             <Text
               fontFamily="$body"
@@ -218,7 +218,7 @@ export function RegisterScreen({ navigation }: Props) {
               textAlign="center"
               maxWidth={280}
             >
-              Empezá a comparar precios en segundos y guardá tus listas en un solo lugar.
+              Empieza a comparar precios en segundos y guarda tus listas en un solo lugar.
             </Text>
           </YStack>
         </YStack>
@@ -356,19 +356,19 @@ export function RegisterScreen({ navigation }: Props) {
 
         <XStack justifyContent="center" gap="$1">
           <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
-            ¿Ya tenés cuenta?
+            ¿Ya tienes cuenta?
           </Text>
           <Text
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel="Iniciá sesión, ir a la pantalla de acceso"
+            accessibilityLabel="Iniciar sesión, ir a la pantalla de acceso"
             hitSlop={8}
             fontFamily="$heading"
             fontSize="$sm"
             color="$primary"
             pressStyle={subtlePressStyle}
           >
-            Iniciá sesión
+            Iniciar sesión
           </Text>
         </XStack>
       </YStack>
