@@ -37,6 +37,8 @@ export function BranchSelectScreen({ route, navigation }: Props) {
   const selectedStoreId = selectedStore?.id ?? null;
   const pendingScan = route.params?.pendingScan;
   const canStartPurchase = selectedStore !== null && selectedBranchId !== null && !isSubmitting;
+  const isLoadingStores = storesQuery.isPending && stores.length === 0;
+  const isLoadingBranches = selectedStore !== null && branchesQuery.isPending;
 
   const handleStartPurchase = async () => {
     const branchId = selectedBranchId;
@@ -111,8 +113,20 @@ export function BranchSelectScreen({ route, navigation }: Props) {
               </Text>
             </YStack>
 
-            {storesQuery.isPending && (
-              <ActivityIndicator color={colorTokens.primary} />
+            {isLoadingStores && (
+              <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
+                <XStack alignItems="center" gap="$3">
+                  <ActivityIndicator color={colorTokens.primary} />
+                  <YStack flex={1} gap="$0.5">
+                    <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                      Preparando tiendas
+                    </Text>
+                    <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                      Estamos cargando las opciones disponibles para que puedas continuar.
+                    </Text>
+                  </YStack>
+                </XStack>
+              </Card>
             )}
 
             {storesQuery.isError && (
@@ -123,56 +137,57 @@ export function BranchSelectScreen({ route, navigation }: Props) {
               </Card>
             )}
 
-            {stores.map((store) => {
-              const isSelectedStore = selectedStoreId !== null && selectedStoreId === store.id;
-              return (
-                <Button
-                  key={store.id}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  backgroundColor="$surface"
-                  borderWidth={1}
-                  borderColor={isSelectedStore ? '$primary' : '$borderColor'}
-                  borderRadius="$4"
-                  padding="$4"
-                  minHeight={68}
-                  onPress={() => {
-                    setSelectedStore(store);
-                    setSelectedBranchId(null);
-                  }}
-                >
-                  <XStack alignItems="center" gap="$3" flex={1}>
-                    <YStack
-                      width={42}
-                      height={42}
-                      borderRadius="$full"
-                      backgroundColor="rgba(15, 23, 42, 0.05)"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <IconMapPin
-                        color={colorTokens.textSecondary}
-                        size={18}
-                        strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-                      />
-                    </YStack>
-                    <YStack flex={1} gap="$0.5">
-                      <Text fontFamily="$heading" fontSize="$md" color="$color" textAlign="left">
-                        {store.name}
-                      </Text>
-                      <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
-                        Elige una sucursal para continuar
-                      </Text>
-                    </YStack>
-                  </XStack>
-                  <IconChevronRight
-                    color={colorTokens.textSecondary}
-                    size={18}
-                    strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-                  />
-                </Button>
-              );
-            })}
+            {!isLoadingStores &&
+              stores.map((store) => {
+                const isSelectedStore = selectedStoreId !== null && selectedStoreId === store.id;
+                return (
+                  <Button
+                    key={store.id}
+                    justifyContent="space-between"
+                    alignItems="center"
+                    backgroundColor="$surface"
+                    borderWidth={1}
+                    borderColor={isSelectedStore ? '$primary' : '$borderColor'}
+                    borderRadius="$4"
+                    padding="$4"
+                    minHeight={68}
+                    onPress={() => {
+                      setSelectedStore(store);
+                      setSelectedBranchId(null);
+                    }}
+                  >
+                    <XStack alignItems="center" gap="$3" flex={1}>
+                      <YStack
+                        width={42}
+                        height={42}
+                        borderRadius="$full"
+                        backgroundColor="rgba(15, 23, 42, 0.05)"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <IconMapPin
+                          color={colorTokens.textSecondary}
+                          size={18}
+                          strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                        />
+                      </YStack>
+                      <YStack flex={1} gap="$0.5">
+                        <Text fontFamily="$heading" fontSize="$md" color="$color" textAlign="left">
+                          {store.name}
+                        </Text>
+                        <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left">
+                          Elige una sucursal para continuar
+                        </Text>
+                      </YStack>
+                    </XStack>
+                    <IconChevronRight
+                      color={colorTokens.textSecondary}
+                      size={18}
+                      strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                    />
+                  </Button>
+                );
+              })}
           </YStack>
         )}
 
@@ -232,7 +247,21 @@ export function BranchSelectScreen({ route, navigation }: Props) {
               </Text>
             </YStack>
 
-            {branchesQuery.isPending && <ActivityIndicator color={colorTokens.primary} />}
+            {isLoadingBranches && (
+              <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$2">
+                <XStack alignItems="center" gap="$3">
+                  <ActivityIndicator color={colorTokens.primary} />
+                  <YStack flex={1} gap="$0.5">
+                    <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                      Preparando sucursales
+                    </Text>
+                    <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                      Estamos trayendo las sucursales de {selectedStore.name}.
+                    </Text>
+                  </YStack>
+                </XStack>
+              </Card>
+            )}
 
             {branchesQuery.isError && (
               <Card backgroundColor="$surface" borderRadius="$4" padding="$4">
@@ -242,59 +271,60 @@ export function BranchSelectScreen({ route, navigation }: Props) {
               </Card>
             )}
 
-            {branchesQuery.data?.map((item: StoreBranch) => (
-              <Button
-                key={item.id}
-                justifyContent="space-between"
-                alignItems="center"
-                backgroundColor="$surface"
-                borderWidth={1}
-                borderColor={selectedBranchId === item.id ? '$primary' : '$borderColor'}
-                borderRadius="$4"
-                paddingHorizontal="$4"
-                paddingVertical="$4"
-                minHeight={80}
-                onPress={() => {
-                  setSelectedBranchId(item.id);
-                }}
-              >
-                <XStack alignItems="center" gap="$3" flex={1}>
-                  <YStack
-                    width={42}
-                    height={42}
-                    borderRadius="$full"
-                    backgroundColor="rgba(34, 197, 94, 0.08)"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <IconBuildingStore
-                      color={colorTokens.primary}
-                      size={18}
-                      strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-                    />
-                  </YStack>
-                  <YStack flex={1} gap="$0.25" flexShrink={1}>
-                    <Text
-                      fontFamily="$heading"
-                      fontSize="$md"
-                      color="$color"
-                      textAlign="left"
-                      numberOfLines={2}
+            {!isLoadingBranches &&
+              branchesQuery.data?.map((item: StoreBranch) => (
+                <Button
+                  key={item.id}
+                  justifyContent="space-between"
+                  alignItems="center"
+                  backgroundColor="$surface"
+                  borderWidth={1}
+                  borderColor={selectedBranchId === item.id ? '$primary' : '$borderColor'}
+                  borderRadius="$4"
+                  paddingHorizontal="$4"
+                  paddingVertical="$4"
+                  minHeight={80}
+                  onPress={() => {
+                    setSelectedBranchId(item.id);
+                  }}
+                >
+                  <XStack alignItems="center" gap="$3" flex={1}>
+                    <YStack
+                      width={42}
+                      height={42}
+                      borderRadius="$full"
+                      backgroundColor="rgba(34, 197, 94, 0.08)"
+                      alignItems="center"
+                      justifyContent="center"
                     >
-                      {item.name}
-                    </Text>
-                    <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left" numberOfLines={2}>
-                      {item.city}
-                    </Text>
-                  </YStack>
-                </XStack>
-                <IconChevronRight
-                  color={colorTokens.textSecondary}
-                  size={18}
-                  strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
-                />
-              </Button>
-            ))}
+                      <IconBuildingStore
+                        color={colorTokens.primary}
+                        size={18}
+                        strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                      />
+                    </YStack>
+                    <YStack flex={1} gap="$0.25" flexShrink={1}>
+                      <Text
+                        fontFamily="$heading"
+                        fontSize="$md"
+                        color="$color"
+                        textAlign="left"
+                        numberOfLines={2}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="left" numberOfLines={2}>
+                        {item.city}
+                      </Text>
+                    </YStack>
+                  </XStack>
+                  <IconChevronRight
+                    color={colorTokens.textSecondary}
+                    size={18}
+                    strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                  />
+                </Button>
+              ))}
           </YStack>
         )}
 

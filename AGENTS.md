@@ -1,5 +1,9 @@
 # AGENTS.md
 
+
+
+[![Deploy to Staging](https://github.com/CodeDeveloperV/prezio_app/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/CodeDeveloperV/prezio_app/actions/workflows/deploy-staging.yml)
+
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Project
@@ -121,6 +125,7 @@ Each feature under `backend/app/features/<name>/` is self-contained with the sam
   single resolved copy.
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence
 
 This project is indexed by GitNexus as **prezio_app** (980 symbols, 1624 relationships, 46 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
@@ -145,27 +150,28 @@ This project is indexed by GitNexus as **prezio_app** (980 symbols, 1624 relatio
 
 ## Resources
 
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/prezio_app/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/prezio_app/clusters` | All functional areas |
-| `gitnexus://repo/prezio_app/processes` | All execution flows |
-| `gitnexus://repo/prezio_app/process/{name}` | Step-by-step execution trace |
+| Resource                                    | Use for                                  |
+| ------------------------------------------- | ---------------------------------------- |
+| `gitnexus://repo/prezio_app/context`        | Codebase overview, check index freshness |
+| `gitnexus://repo/prezio_app/clusters`       | All functional areas                     |
+| `gitnexus://repo/prezio_app/processes`      | All execution flows                      |
+| `gitnexus://repo/prezio_app/process/{name}` | Step-by-step execution trace             |
 
 ## CLI
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task                                         | Read this skill file                                        |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
+| Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
+| Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
+| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->
 
 <!-- CODEGRAPH_START -->
+
 ## CodeGraph
 
 In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
@@ -174,4 +180,5 @@ In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the re
 - **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.
 
 If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
+
 <!-- CODEGRAPH_END -->

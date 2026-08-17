@@ -62,6 +62,13 @@ export interface StoreBranch {
   city: string;
 }
 
+// GET /stores/branches/{id} -- same shape as StoreBranch plus the parent store's name, so
+// callers that only hold a branch id (e.g. ShoppingList.active_store_branch_id) can render a
+// "Store - Branch" label without a second round trip to look up the store.
+export interface StoreBranchWithStore extends StoreBranch {
+  store_name: string;
+}
+
 export interface Category {
   id: number;
   name: string;

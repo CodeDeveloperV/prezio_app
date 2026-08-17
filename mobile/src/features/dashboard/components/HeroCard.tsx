@@ -1,3 +1,4 @@
+import { ActivityIndicator } from 'react-native';
 import { Button, Card, Text, XStack, YStack } from 'tamagui';
 
 import {
@@ -10,8 +11,10 @@ import { colorTokens } from '../../../app/theme/tokens';
 
 interface HeroCardProps {
   hasActiveSession: boolean;
-  activeSessionName?: string | null;
-  activeSessionMetric?: string | null;
+  activeSessionBranchLabel?: string | null;
+  activeSessionTotal?: string | null;
+  activeSessionStatus?: string | null;
+  isPrimaryActionLoading?: boolean;
   onPressPrimaryAction: () => void;
 }
 const primaryPressStyle = { backgroundColor: '$primaryPress' };
@@ -22,8 +25,10 @@ const primaryPressStyle = { backgroundColor: '$primaryPress' };
  */
 export function HeroCard({
   hasActiveSession,
-  activeSessionName,
-  activeSessionMetric,
+  activeSessionBranchLabel,
+  activeSessionTotal,
+  activeSessionStatus,
+  isPrimaryActionLoading = false,
   onPressPrimaryAction,
 }: HeroCardProps) {
   if (hasActiveSession) {
@@ -34,41 +39,41 @@ export function HeroCard({
         borderWidth={1}
         borderColor="rgba(255, 255, 255, 0.08)"
         borderRadius="$4"
-        padding="$5"
-        gap="$4"
+        padding="$4"
+        gap="$3"
       >
-        <XStack alignItems="flex-start" gap="$3">
+        <XStack alignItems="center" gap="$3">
           <YStack
-            width={48}
-            height={48}
+            width={40}
+            height={40}
             borderRadius="$full"
             backgroundColor="rgba(34, 197, 94, 0.14)"
             alignItems="center"
             justifyContent="center"
           >
-            <IconShoppingCart color={colorTokens.primary} size={24} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+            <IconShoppingCart color={colorTokens.primary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
           </YStack>
 
-          <YStack flex={1} gap="$2">
+          <YStack flex={1} gap="$1">
             <XStack alignItems="center" gap="$2">
-              <YStack width={8} height={8} borderRadius="$full" backgroundColor="$primary" />
+              <YStack width={6} height={6} borderRadius="$full" backgroundColor="$primary" />
               <Text fontFamily="$body" fontSize="$xs" letterSpacing={1.2} color="$primary">
                 Compra en curso
               </Text>
             </XStack>
 
-            <Text fontFamily="$heading" fontSize="$xl" color="$white">
-              {activeSessionName ?? 'Tu compra activa'}
+            <Text fontFamily="$heading" fontSize="$lg" color="$white" numberOfLines={1}>
+              {activeSessionBranchLabel ?? 'Tu compra activa'}
             </Text>
           </YStack>
         </XStack>
 
         <YStack gap="$1">
           <Text fontFamily="$heading" fontSize="$display" color="$primary">
-            {activeSessionMetric ?? '0 productos pendientes'}
+            {activeSessionTotal ?? '$0.00'}
           </Text>
           <Text fontFamily="$body" fontSize="$sm" color="#CBD5E1">
-            Continúa donde la dejaste.
+            {activeSessionStatus ?? 'Aún no has agregado ni escaneado productos.'}
           </Text>
         </YStack>
 
@@ -76,13 +81,21 @@ export function HeroCard({
           onPress={onPressPrimaryAction}
           backgroundColor="$primary"
           color={colorTokens.textPrimary}
+          disabled={isPrimaryActionLoading}
           pressStyle={primaryPressStyle}
           borderRadius="$4"
           paddingVertical="$4"
           minHeight={56}
+          icon={
+            isPrimaryActionLoading ? (
+              <ActivityIndicator color={colorTokens.textPrimary} />
+            ) : (
+              <IconPlus color={colorTokens.white} size={20} strokeWidth={STRONG_ICON_STROKE_WIDTH} />
+            )
+          }
         >
           <Text fontFamily="$heading" fontSize="$md" color={colorTokens.textPrimary}>
-            Continuar compra
+            {isPrimaryActionLoading ? 'Abriendo...' : 'Continuar compra'}
           </Text>
         </Button>
       </Card>
@@ -127,15 +140,22 @@ export function HeroCard({
         onPress={onPressPrimaryAction}
         backgroundColor="$primary"
         color="$white"
+        disabled={isPrimaryActionLoading}
         pressStyle={primaryPressStyle}
         borderRadius="$4"
         size="$5"
-        icon={<IconPlus color={colorTokens.white} size={20} strokeWidth={STRONG_ICON_STROKE_WIDTH} />}
+        icon={
+          isPrimaryActionLoading ? (
+            <ActivityIndicator color={colorTokens.white} />
+          ) : (
+            <IconPlus color={colorTokens.white} size={20} strokeWidth={STRONG_ICON_STROKE_WIDTH} />
+          )
+        }
         paddingVertical="$4"
         minHeight={56}
       >
         <Text fontFamily="$heading" fontSize="$md" color="$white">
-          Nueva compra
+          {isPrimaryActionLoading ? 'Abriendo...' : 'Nueva compra'}
         </Text>
       </Button>
     </Card>

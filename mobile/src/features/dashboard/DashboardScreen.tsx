@@ -1,6 +1,6 @@
 import { ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -18,15 +18,21 @@ import { LastPurchaseCard } from './components/LastPurchaseCard';
 import { MonthStatsCard } from './components/MonthStatsCard';
 import { MostPurchasedList } from './components/MostPurchasedList';
 import { SpendTrendChart } from './components/SpendTrendChart';
+import { listStores } from '../stores/api/storesApi';
+import { useStoreBranchQuery } from '../stores/hooks/useStores';
 import { listShoppingListItems, listShoppingLists } from '../shopping-lists/api/shoppingListsApi';
 import { selectActiveShoppingList } from '../shopping-lists/utils/selectActiveShoppingList';
 import { useDashboardQuery } from './hooks/useDashboardQuery';
+import { formatMoney } from './utils/format';
+import { useState } from 'react';
 
 const analyticsCtaPressStyle = { opacity: 0.7 };
 
 export function DashboardScreen() {
   const user = useAuthStore((state) => state.user);
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const queryClient = useQueryClient();
+  const [isOpeningNewPurchase, setIsOpeningNewPurchase] = useState(false);
   const dashboardQuery = useDashboardQuery();
   const shoppingListsQuery = useQuery<ShoppingList[], Error>({
     queryKey: ['shoppingLists'],
@@ -41,24 +47,50 @@ export function DashboardScreen() {
     enabled: activeShoppingList !== null,
   });
 
-  const activeShoppingListQuantity = activeShoppingListItemsQuery.data?.reduce(
-    (total, item) => total + (item.checked ? 0 : item.quantity),
+  const activeBranchQuery = useStoreBranchQuery(activeShoppingList?.active_store_branch_id);
+  const activeBranchLabel = activeBranchQuery.data
+    ? `${activeBranchQuery.data.store_name} - ${activeBranchQuery.data.name}`
+    : null;
+
+  const scannedItems = activeShoppingListItemsQuery.data?.filter(
+    (item) => item.checked && item.price_at_check !== null,
+  );
+  const activeSessionTotal = (scannedItems ?? []).reduce(
+    (total, item) => total + Number(item.price_at_check) * item.quantity,
     0,
   );
-  let activeSessionMetric: string | null = null;
-  if (activeShoppingList !== null) {
-    if (activeShoppingListItemsQuery.isPending) {
-      activeSessionMetric = 'Cargando productos...';
-    } else if (activeShoppingListQuantity === 0) {
-      activeSessionMetric = 'Sin productos pendientes';
-    } else {
-      activeSessionMetric = `${activeShoppingListQuantity} ${
-        activeShoppingListQuantity === 1 ? 'producto pendiente' : 'productos pendientes'
-      }`;
-    }
+  let activeSessionStatus: string | null = null;
+  if (activeShoppingList !== null && !activeShoppingListItemsQuery.isPending) {
+    activeSessionStatus =
+      scannedItems && scannedItems.length > 0
+        ? `${scannedItems.length} ${scannedItems.length === 1 ? 'producto escaneado' : 'productos escaneados'}`
+        : 'Aún no has agregado ni escaneado productos.';
   }
 
   const greetingName = user?.email?.split('@')[0] ?? 'de nuevo';
+
+  const handlePrimaryAction = () => {
+    setIsOpeningNewPurchase(true);
+    queryClient.prefetchQuery({
+      queryKey: ['stores'],
+      queryFn: listStores,
+    }).catch(() => undefined);
+
+    setTimeout(() => {
+      if (activeShoppingList) {
+        navigation.navigate('NewPurchase', {
+          screen: 'Scan',
+          params: {
+            storeBranchId: activeShoppingList.active_store_branch_id ?? undefined,
+            scanFlow: 'purchase',
+          },
+        });
+      } else {
+        navigation.navigate('NewPurchase', { screen: 'BranchSelect', params: {} });
+      }
+      setIsOpeningNewPurchase(false);
+    }, 0);
+  };
 
   return (
     <ScreenContainer>
@@ -78,21 +110,11 @@ export function DashboardScreen() {
 
       <HeroCard
         hasActiveSession={activeShoppingList !== null}
-        activeSessionName={activeShoppingList?.name ?? null}
-        activeSessionMetric={activeShoppingList !== null ? activeSessionMetric : null}
-        onPressPrimaryAction={() => {
-          if (activeShoppingList) {
-            navigation.navigate('NewPurchase', {
-              screen: 'Scan',
-              params: {
-                storeBranchId: activeShoppingList.active_store_branch_id ?? undefined,
-                scanFlow: 'purchase',
-              },
-            });
-          } else {
-            navigation.navigate('NewPurchase', { screen: 'BranchSelect', params: {} });
-          }
-        }}
+        activeSessionBranchLabel={activeBranchLabel}
+        activeSessionTotal={activeShoppingList !== null ? formatMoney(activeSessionTotal) : null}
+        activeSessionStatus={activeSessionStatus}
+        isPrimaryActionLoading={isOpeningNewPurchase}
+        onPressPrimaryAction={handlePrimaryAction}
       />
 
       {(dashboardQuery.isPending || shoppingListsQuery.isPending) && (
