@@ -5,6 +5,7 @@ from typing import Annotated, Literal, Union
 from pydantic import BaseModel, Field
 
 from app.features.catalog.enums import BarcodeSource, BarcodeType, RecognitionType
+from app.features.catalog.image_storage import EXTENSION_BY_CONTENT_TYPE
 from app.features.pricing.schemas import StoreProductRead
 from app.shared.base_schemas import ORMModel
 from app.shared.enums import ModerationStatus
@@ -160,6 +161,15 @@ class AttachBarcodeRequest(BaseModel):
     barcode_type: BarcodeType = BarcodeType.OTHER
     store_id: int | None = None
     country: str | None = None
+
+
+class ImageUploadUrlRequest(BaseModel):
+    content_type: Literal[tuple(EXTENSION_BY_CONTENT_TYPE)]  # type: ignore[valid-type]
+
+
+class ImageUploadUrlResponse(BaseModel):
+    upload_url: str
+    image_url: str
 
 
 class CreateProductRequest(BaseModel):

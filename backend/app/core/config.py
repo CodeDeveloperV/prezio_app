@@ -19,6 +19,16 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
 
+    # Product image uploads (see app.features.catalog.image_storage). Left blank by default --
+    # ImageStorageService raises ImageStorageNotConfigured until all four are set, so the feature
+    # degrades to a clear 503 instead of failing at import time when AWS isn't set up yet.
+    aws_region: str = ""
+    aws_s3_bucket: str = ""
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    # How long a presigned upload URL stays valid before the mobile client must request a new one.
+    s3_presigned_url_expire_seconds: int = 300
+
     # `allow_credentials=True` in app.main's CORSMiddleware means this must NEVER default to
     # ["*"] in production -- browsers (and Starlette itself) treat wildcard-plus-credentials as
     # "reflect any Origin", which defeats CORS entirely. The default here is web-admin's local
