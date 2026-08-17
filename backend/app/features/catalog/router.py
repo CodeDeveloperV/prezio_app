@@ -15,6 +15,7 @@ from app.features.catalog.repository import (
 from app.features.catalog.resolution_engine import CatalogResolutionEngine
 from app.features.catalog.schemas import (
     AttachBarcodeRequest,
+    BrandRead,
     CategoryRead,
     CatalogSearchResultRead,
     CreateProductRequest,
@@ -65,6 +66,12 @@ async def list_categories(service: CatalogService = Depends(get_catalog_service)
 async def list_products(service: CatalogService = Depends(get_catalog_service)) -> list[ProductRead]:
     products = await service.list_products()
     return [ProductRead.model_validate(p) for p in products]
+
+
+@router.get("/brands", response_model=list[BrandRead])
+async def list_brands(db: AsyncSession = Depends(get_db)) -> list[BrandRead]:
+    brands = await BrandRepository(db).list_all()
+    return [BrandRead.model_validate(b) for b in brands]
 
 
 @router.get("/products/search", response_model=list[CatalogSearchResultRead])

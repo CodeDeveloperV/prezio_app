@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from app.features.pricing.enums import Availability
+from app.features.pricing.enums import Availability, PriceUpdateSource
 from app.shared.base_schemas import ORMModel
 
 
@@ -34,6 +34,7 @@ class PriceHistoryRead(BaseModel):
     previous_price: Decimal | None
     new_price: Decimal
     updated_by: PriceHistoryUpdatedByRead | None
+    source: PriceUpdateSource
     updated_at: datetime
 
 

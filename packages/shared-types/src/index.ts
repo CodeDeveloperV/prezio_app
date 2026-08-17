@@ -268,6 +268,10 @@ export interface CreateProductRequest {
 
 export type Availability = 'in_stock' | 'out_of_stock' | 'unknown' | 'discontinued';
 
+// Who originated a PriceHistory entry -- lets the UI distinguish "reportado por la comunidad"
+// (mobile/crowdsourced) from "confirmado por el supermercado" (B2B portal, see Fase 10.6 below).
+export type PriceUpdateSource = 'community' | 'merchant' | 'system';
+
 // version drives optimistic concurrency: price updates must send the last-seen
 // version; a mismatch means the server's price already moved (see PriceConflictResponse).
 export interface StoreProductRead {
@@ -299,6 +303,7 @@ export interface PriceHistoryRead {
   previous_price: number | null;
   new_price: number;
   updated_by: PriceHistoryUpdatedByRead | null;
+  source: PriceUpdateSource;
   updated_at: ISODateTime;
 }
 
@@ -750,4 +755,612 @@ export interface AnalyticsSummary {
   monthly_evolution: MonthlyEvolution;
   personal_inflation: PersonalInflation;
   favorite_products: FavoriteProducts;
+}
+
+// --- B2B organizations (web-admin portal) ------------------------------------------------------
+// "Organization" on the wire is the existing Store row -- there is no separate organizations
+// table. Branch access is a scope, not a role: ORGANIZATION_ADMIN implicitly has every branch,
+// MANAGER/EMPLOYEE only the branches explicitly granted via branch_ids.
+
+export type OrganizationRole = 'organization_admin' | 'manager' | 'employee';
+
+export type OrganizationMemberStatus = 'active' | 'inactive';
+
+export interface OrganizationRead {
+  id: number;
+  name: string;
+  country: string;
+}
+
+export interface OrganizationMemberRead {
+  id: number;
+  store_id: number;
+  user_id: number;
+  user_email: string;
+  role: OrganizationRole;
+  status: OrganizationMemberStatus;
+  branch_ids: number[];
+  joined_at: ISODateTime;
+}
+
+// GET /b2b/memberships/me -- one row per organization the current user belongs to, lets the
+// portal show an organization switcher and resolve role/branch scope right after login.
+export interface MyMembershipRead {
+  organization: OrganizationRead;
+  role: OrganizationRole;
+  status: OrganizationMemberStatus;
+  branch_ids: number[];
+}
+
+export interface OrganizationMemberInvite {
+  email: string;
+  role: OrganizationRole;
+  branch_ids?: number[];
+}
+
+export interface OrganizationMemberUpdate {
+  role?: OrganizationRole;
+  status?: OrganizationMemberStatus;
+  branch_ids?: number[];
+}
+
+export interface BranchCreate {
+  name: string;
+  city: string;
+}
+
+export interface BranchUpdate {
+  name?: string;
+  city?: string;
+}
+
+// --- B2B catalog (web-admin portal) --------------------------------------------------------
+// Fase 10.5. Read-only global-catalog browsing plus per-branch listing (StoreProduct)
+// management for the current organization -- never creates/edits/moderates a Product itself.
+// org_status/status here are a tri-state VIEW of the relationship, not a new backend enum:
+// NOT_LISTED means no StoreProduct row exists at all for that branch.
+
+export type OrgListingStatus = 'not_listed' | 'active' | 'inactive';
+
+export type StoreProductStatus = 'active' | 'inactive';
+
+export interface CatalogProductSummary {
+  id: number;
+  canonical_name: string;
+  brand_name: string | null;
+  presentation: string | null;
+  category_name: string | null;
+  barcode: string | null;
+  image_url: string | null;
+  status: ModerationStatus;
+  recognition_type: RecognitionType;
+  // Count of this organization's branches (within the caller's branch scope) where the
+  // listing is currently ACTIVE.
+  branches_listed_count: number;
+  org_status: OrgListingStatus;
+}
+
+export interface BranchListingRead {
+  branch_id: number;
+  branch_name: string;
+  city: string;
+  status: OrgListingStatus;
+  store_product_id: number | null;
+  current_price: string | null;
+  currency: string | null;
+}
+
+export interface CatalogProductDetail {
+  id: number;
+  canonical_name: string;
+  brand_name: string | null;
+  presentation: string | null;
+  category_name: string | null;
+  barcode: string | null;
+  description: string | null;
+  image_url: string | null;
+  status: ModerationStatus;
+  recognition_type: RecognitionType;
+  branches: BranchListingRead[];
+}
+
+// Idempotent: if a branch already has an ACTIVE listing it's left untouched; an INACTIVE one
+// is reactivated (never overwriting its stored price); only a genuinely new listing uses
+// initial_price/currency. Never touches price on an already-ACTIVE listing -- see Fase 10.6.
+export interface CreateListingRequest {
+  branch_ids: number[];
+  initial_price: string;
+  currency?: string;
+}
+
+export interface UpdateListingStatusRequest {
+  status: StoreProductStatus;
+}
+
+// --- B2B pricing (web-admin portal) ---------------------------------------------------------
+// Fase 10.6. Price/availability management for StoreProducts already listed at the
+// organization's branches -- never creates/edits a listing itself (see B2B catalog above).
+// The portal never exposes 'discontinued' as an availability choice on write (that would blur
+// it with listing_status=INACTIVE); Availability itself (already defined above) stays the full
+// read-side type since a listing's history can still show it if set some other way.
+export type PricingAvailabilityChoice = 'in_stock' | 'out_of_stock' | 'unknown';
+
+export interface PricingListItemRead {
+  store_product_id: number;
+  branch_id: number;
+  branch_name: string;
+  product_id: number;
+  canonical_name: string;
+  brand_name: string | null;
+  presentation: string | null;
+  category_name: string | null;
+  barcode: string | null;
+  image_url: string | null;
+  current_price: number;
+  previous_price: number | null;
+  currency: string;
+  availability: Availability;
+  listing_status: StoreProductStatus;
+  version: number;
+  last_verified_at: ISODateTime | null;
+  updated_at: ISODateTime;
+  last_updated_by: PriceHistoryUpdatedByRead | null;
+  last_update_source: PriceUpdateSource | null;
+}
+
+// PATCH-style: at least one of price/availability must be provided (enforced server-side).
+// price is a string on the wire (same convention as CreateListingRequest.initial_price) to
+// avoid JS floating-point round-tripping through a Decimal-backed API.
+export interface B2BPriceUpdateRequest {
+  price?: string;
+  availability?: PricingAvailabilityChoice;
+  version: number;
+}
+
+// Returned with HTTP 409 when submitted_version is stale -- let the user choose to adopt
+// current_price/current_availability/current_version (and resubmit) or go back to editing.
+export interface B2BPriceConflictRead {
+  detail: string;
+  store_product_id: number;
+  submitted_price: number | null;
+  submitted_availability: Availability | null;
+  submitted_version: number;
+  current_price: number;
+  current_availability: Availability | null;
+  current_version: number;
+}
+
+export interface B2BBatchUpdateItem {
+  store_product_id: number;
+  price?: string;
+  availability?: PricingAvailabilityChoice;
+  version: number;
+}
+
+export interface B2BBatchUpdateRequest {
+  items: B2BBatchUpdateItem[];
+}
+
+export interface B2BBatchFailedItem {
+  store_product_id: number;
+  error: string;
+}
+
+// Independent per-item processing -- one item's conflict/failure never blocks the rest of the
+// batch (see B2BPricingService.batch_update).
+export interface B2BBatchUpdateResponse {
+  updated: PricingListItemRead[];
+  conflicts: B2BPriceConflictRead[];
+  failed: B2BBatchFailedItem[];
+}
+
+// Promotions is a domain separate from Pricing -- never mutates StoreProduct.current_price or
+// PriceHistory (see backend/app/features/promotions). Only DRAFT/PUBLISHED/CANCELLED are
+// persisted; SCHEDULED/ACTIVE/EXPIRED are derived from start_at/end_at at read time.
+export type PromotionType = 'percentage_discount' | 'fixed_discount' | 'special_price' | 'buy_x_get_y';
+
+export type PromotionStatus = 'draft' | 'published' | 'cancelled';
+
+export type PromotionDisplayStatus = 'draft' | 'scheduled' | 'active' | 'expired' | 'cancelled';
+
+export interface PromotionCreate {
+  name: string;
+  description?: string | null;
+  type: PromotionType;
+  priority?: number | null;
+  percentage_value?: string | null;
+  fixed_discount_value?: string | null;
+  special_price?: string | null;
+  buy_quantity?: number | null;
+  pay_quantity?: number | null;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+}
+
+export type PromotionUpdate = PromotionCreate;
+
+export interface PromotionRead {
+  id: number;
+  store_id: number;
+  name: string;
+  description: string | null;
+  type: PromotionType;
+  status: PromotionStatus;
+  display_status: PromotionDisplayStatus;
+  priority: number;
+  percentage_value: string | null;
+  fixed_discount_value: string | null;
+  special_price: string | null;
+  buy_quantity: number | null;
+  pay_quantity: number | null;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+  created_by: number | null;
+  updated_by: number | null;
+  published_by: number | null;
+  published_at: ISODateTime | null;
+  cancelled_by: number | null;
+  cancelled_at: ISODateTime | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+export interface PromotionListItemRead {
+  id: number;
+  name: string;
+  type: PromotionType;
+  status: PromotionStatus;
+  display_status: PromotionDisplayStatus;
+  priority: number;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+}
+
+export interface PromotionListRead {
+  items: PromotionListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// Coupon is a domain separate from Promotion (Fase 10.10) -- a new `coupons` table, no FK to
+// promotions. A coupon's benefit is conditioned on presenting/using a `code`; eligibility,
+// claim, redemption counting, and per-user limits enforcement are NOT built in 10.10 (reserved
+// for EPIC 11) -- `max_redemptions_total`/`max_redemptions_per_user` are persisted but not
+// enforced or counted here. Only DRAFT/PUBLISHED/CANCELLED are persisted; SCHEDULED/ACTIVE/
+// EXPIRED are derived from start_at/end_at at read time, same as Promotion.
+export type CouponType = 'percentage_discount' | 'fixed_amount';
+
+export type CouponStatus = 'draft' | 'published' | 'cancelled';
+
+export type CouponDisplayStatus = 'draft' | 'scheduled' | 'active' | 'expired' | 'cancelled';
+
+export interface CouponCreate {
+  name: string;
+  description?: string | null;
+  code: string;
+  type: CouponType;
+  percentage_value?: string | null;
+  fixed_amount_value?: string | null;
+  applies_to_entire_purchase: boolean;
+  applies_to_all_branches: boolean;
+  minimum_purchase_amount?: string | null;
+  maximum_discount_amount?: string | null;
+  max_redemptions_total?: number | null;
+  max_redemptions_per_user?: number | null;
+  is_stackable: boolean;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+}
+
+export type CouponUpdate = CouponCreate;
+
+export interface CouponRead {
+  id: number;
+  store_id: number;
+  name: string;
+  description: string | null;
+  code: string;
+  type: CouponType;
+  status: CouponStatus;
+  display_status: CouponDisplayStatus;
+  percentage_value: string | null;
+  fixed_amount_value: string | null;
+  applies_to_entire_purchase: boolean;
+  applies_to_all_branches: boolean;
+  minimum_purchase_amount: string | null;
+  maximum_discount_amount: string | null;
+  max_redemptions_total: number | null;
+  max_redemptions_per_user: number | null;
+  is_stackable: boolean;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+  created_by: number | null;
+  updated_by: number | null;
+  published_by: number | null;
+  published_at: ISODateTime | null;
+  cancelled_by: number | null;
+  cancelled_at: ISODateTime | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+export interface CouponListItemRead {
+  id: number;
+  name: string;
+  code: string;
+  type: CouponType;
+  status: CouponStatus;
+  display_status: CouponDisplayStatus;
+  percentage_value: string | null;
+  fixed_amount_value: string | null;
+  applies_to_entire_purchase: boolean;
+  applies_to_all_branches: boolean;
+  max_redemptions_total: number | null;
+  max_redemptions_per_user: number | null;
+  start_at: ISODateTime;
+  end_at: ISODateTime;
+  branch_ids: number[];
+  product_ids: number[];
+  created_by: number | null;
+}
+
+export interface CouponListRead {
+  items: CouponListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// Report is a domain fully separate from Promotion/Coupon and from moderation's ProductMerge --
+// it models a community-reported data-quality issue (wrong info, barcode, price, availability,
+// duplicate, not-sold-here) that an organization's operators triage and resolve (Fase 10.11).
+// Individual reports about the same entity+type are never physically merged; the API groups
+// them in the read model instead (`group_report_count`/`latest_reported_at`).
+export type ReportType =
+  | 'incorrect_product_info'
+  | 'incorrect_barcode'
+  | 'duplicate_product'
+  | 'incorrect_price'
+  | 'incorrect_availability'
+  | 'product_not_sold_here'
+  | 'other';
+
+export type ReportStatus = 'open' | 'in_review' | 'resolved' | 'dismissed';
+
+export type ReportPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type ReportResolutionType =
+  | 'data_corrected'
+  | 'price_updated'
+  | 'availability_updated'
+  | 'listing_disabled'
+  | 'escalated_to_catalog_moderation'
+  | 'no_issue_found'
+  | 'duplicate_confirmed'
+  | 'other';
+
+export interface ReportActivityRead {
+  id: number;
+  actor_user_id: number | null;
+  action: string;
+  note: string | null;
+  created_at: ISODateTime;
+}
+
+export interface ReportRead {
+  id: number;
+  type: ReportType;
+  status: ReportStatus;
+  priority: ReportPriority;
+  reporter_user_id: number;
+  product_id: number | null;
+  product_name: string | null;
+  store_product_id: number | null;
+  store_branch_id: number | null;
+  branch_name: string | null;
+  barcode: string | null;
+  description: string | null;
+  reported_value: Record<string, unknown> | null;
+  current_value_snapshot: Record<string, unknown> | null;
+  assigned_to_user_id: number | null;
+  resolution_type: ReportResolutionType | null;
+  resolution_note: string | null;
+  resolved_by: number | null;
+  resolved_at: ISODateTime | null;
+  dismissed_by: number | null;
+  dismissed_at: ISODateTime | null;
+  group_report_count: number;
+  first_reported_at: ISODateTime;
+  latest_reported_at: ISODateTime;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+  activities: ReportActivityRead[];
+}
+
+export interface ReportListItemRead {
+  id: number;
+  type: ReportType;
+  status: ReportStatus;
+  priority: ReportPriority;
+  product_id: number | null;
+  product_name: string | null;
+  store_product_id: number | null;
+  store_branch_id: number | null;
+  branch_name: string | null;
+  current_price: number | null;
+  reported_price: number | null;
+  assigned_to_user_id: number | null;
+  group_report_count: number;
+  latest_reported_at: ISODateTime;
+  created_at: ISODateTime;
+}
+
+export interface ReportListRead {
+  items: ReportListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ReportSummaryRead {
+  open_count: number;
+  in_review_count: number;
+  high_priority_open_count: number;
+  resolved_this_week_count: number;
+}
+
+export interface ReportAssignRequest {
+  assigned_to_user_id?: number | null;
+}
+
+export interface ReportPriorityUpdate {
+  priority: ReportPriority;
+}
+
+export interface ReportResolveRequest {
+  resolution_type: ReportResolutionType;
+  resolution_note?: string | null;
+}
+
+export interface ReportDismissRequest {
+  resolution_note?: string | null;
+}
+
+// --- B2B analytics (web-admin portal, GET /b2b/organizations/{id}/analytics/*) ---------------
+// Read-only, derived aggregates -- no new persisted tables. Fase 10.12.
+
+export interface BranchCountRead {
+  branch_id: number;
+  branch_name: string;
+  count: number;
+}
+
+export interface TypeCountRead {
+  type: string;
+  count: number;
+}
+
+export interface CategoryCountRead {
+  category_id: number;
+  category_name: string;
+  count: number;
+}
+
+export interface OverviewRead {
+  active_branches: number;
+  active_listings: number;
+  prices_updated: number;
+  prices_updated_previous_period: number | null;
+  stale_prices: number;
+  out_of_stock: number;
+  open_reports: number;
+  high_priority_open_reports: number;
+  active_promotions: number;
+  active_coupons: number;
+}
+
+export interface PriceTimeSeriesPointRead {
+  bucket_start: ISODateTime;
+  changes_count: number;
+  increases_count: number;
+  decreases_count: number;
+}
+
+export interface TopPriceChangeProductRead {
+  product_id: number;
+  product_name: string;
+  store_branch_id: number;
+  branch_name: string;
+  changes_count: number;
+  current_price: number;
+  last_updated: ISODateTime;
+}
+
+export interface PricingAnalyticsRead {
+  granularity: string;
+  time_series: PriceTimeSeriesPointRead[];
+  increases_count: number;
+  decreases_count: number;
+  avg_change_percent: number | null;
+  median_change_percent: number | null;
+  top_products: TopPriceChangeProductRead[];
+  stale_prices_by_branch: BranchCountRead[];
+}
+
+export interface AvailabilityByBranchRead {
+  branch_id: number;
+  branch_name: string;
+  in_stock: number;
+  out_of_stock: number;
+  unknown: number;
+}
+
+export interface AvailabilityAnalyticsRead {
+  in_stock: number;
+  out_of_stock: number;
+  unknown: number;
+  by_branch: AvailabilityByBranchRead[];
+  active_listings_by_category: CategoryCountRead[];
+}
+
+export interface LifecycleCountsRead {
+  active: number;
+  scheduled: number;
+  expired: number;
+  cancelled: number;
+}
+
+export interface PromotionsAnalyticsRead {
+  counts: LifecycleCountsRead;
+  by_branch: BranchCountRead[];
+  by_type: TypeCountRead[];
+  products_currently_promoted: number;
+}
+
+export interface CouponsAnalyticsRead {
+  counts: LifecycleCountsRead;
+  by_type: TypeCountRead[];
+  by_branch: BranchCountRead[];
+  applies_to_all_branches_count: number;
+}
+
+export interface ReportsAnalyticsRead {
+  open_count: number;
+  in_review_count: number;
+  high_priority_open_count: number;
+  resolved_count: number;
+  dismissed_count: number;
+  resolved_previous_period_count: number | null;
+  by_type: TypeCountRead[];
+  by_branch: BranchCountRead[];
+  avg_resolution_hours: number | null;
+}
+
+export interface ActivityEntryRead {
+  type: string;
+  description: string;
+  occurred_at: ISODateTime;
+  branch_id: number | null;
+  branch_name: string | null;
+}
+
+export interface ActivityFeedRead {
+  items: ActivityEntryRead[];
+}
+
+export interface AnalyticsQueryParams {
+  date_from?: string;
+  date_to?: string;
+  branch_ids?: number[];
 }

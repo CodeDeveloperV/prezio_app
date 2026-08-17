@@ -1,7 +1,9 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.alert_scheduler import alert_scheduler
 from app.core.config import get_settings
@@ -11,15 +13,25 @@ from app.features.analytics.router import router as analytics_router
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.comparison.router import router as comparison_router
+from app.features.b2b_analytics.router import router as b2b_analytics_router
+from app.features.coupons.router import router as coupons_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.moderation.router import router as moderation_router
 from app.features.notifications.router import router as notifications_router
+from app.features.organizations.catalog_router import router as organizations_catalog_router
+from app.features.organizations.pricing_router import router as organizations_pricing_router
+from app.features.organizations.router import router as organizations_router
 from app.features.pricing.router import router as pricing_router
+from app.features.promotions.router import router as promotions_router
+from app.features.reports.router import end_user_router as reports_end_user_router
+from app.features.reports.router import router as reports_router
 from app.features.reputation.router import router as reputation_router
 from app.features.shopping_lists.router import invitations_router as shopping_list_invitations_router
 from app.features.shopping_lists.router import router as shopping_lists_router
 from app.features.stores.router import router as stores_router
 from app.features.users.router import router as users_router
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -43,6 +55,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Never let an unexpected exception's message (which may embed request data) leak to the
+    # client -- log the full detail server-side, return a generic body to the caller.
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    # This handler runs in ServerErrorMiddleware, *outside* CORSMiddleware, so its response
+    # would otherwise skip CORS header injection entirely -- the browser would report a CORS
+    # failure and hide the real 500 from the caller. Add the headers here so error responses
+    # from real bugs are still visible client-side.
+    origin = request.headers.get("origin")
+    if origin in settings.cors_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(stores_router)
@@ -57,6 +86,14 @@ app.include_router(notifications_router)
 app.include_router(alerts_router)
 app.include_router(dashboard_router)
 app.include_router(analytics_router)
+app.include_router(organizations_router)
+app.include_router(organizations_catalog_router)
+app.include_router(organizations_pricing_router)
+app.include_router(promotions_router)
+app.include_router(coupons_router)
+app.include_router(b2b_analytics_router)
+app.include_router(reports_router)
+app.include_router(reports_end_user_router)
 
 
 @app.get("/health")
