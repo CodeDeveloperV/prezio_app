@@ -254,6 +254,20 @@ export interface AttachBarcodeRequest {
   country?: string | null;
 }
 
+export type ImageUploadContentType = 'image/jpeg' | 'image/png' | 'image/webp';
+
+// POST /catalog/products/image-upload-url -- returns a short-lived presigned S3 PUT URL. Upload
+// the image bytes to `upload_url` directly (no Authorization header, not through httpClient),
+// then submit the resulting `image_url` in CreateProductRequest.
+export interface ImageUploadUrlRequest {
+  content_type: ImageUploadContentType;
+}
+
+export interface ImageUploadUrlResponse {
+  upload_url: string;
+  image_url: string;
+}
+
 // Fields collected when no candidate matched the scanned barcode. The resulting Product is
 // created with status PENDING; the scanned barcode is attached automatically.
 export interface CreateProductRequest {

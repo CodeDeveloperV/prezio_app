@@ -45,6 +45,11 @@ export { default as IconMinus } from '@tabler/icons-react-native/IconMinus';
 export { default as IconRefresh } from '@tabler/icons-react-native/IconRefresh';
 export { default as IconChartBar } from '@tabler/icons-react-native/IconChartBar';
 export { default as IconChartPie } from '@tabler/icons-react-native/IconChartPie';
+export { default as IconCamera } from '@tabler/icons-react-native/IconCamera';
+export { default as IconLibraryPhoto } from '@tabler/icons-react-native/IconLibraryPhoto';
+export { default as IconPhotoPlus } from '@tabler/icons-react-native/IconPhotoPlus';
+export { default as IconTag } from '@tabler/icons-react-native/IconTag';
+export { default as IconCategory } from '@tabler/icons-react-native/IconCategory';
 
 export const DEFAULT_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.regular;
 export const SUBTLE_ICON_STROKE_WIDTH = brand.iconography.strokeWidth.subtle;

@@ -5,11 +5,13 @@ import {
   createProductFromScan,
   reportIncorrectBarcode,
   scanBarcode,
+  uploadProductImage,
 } from '../api/catalogApi';
 
 import type {
   AttachBarcodeRequest,
   CreateProductRequest,
+  ImageUploadContentType,
   Product,
   ProductBarcode,
   ScanBarcodeRequest,
@@ -31,6 +33,12 @@ export function useAttachBarcodeMutation() {
 export function useCreateProductMutation() {
   return useMutation<Product, Error, CreateProductRequest>({
     mutationFn: createProductFromScan,
+  });
+}
+
+export function useUploadProductImageMutation() {
+  return useMutation<string, Error, { localUri: string; contentType: ImageUploadContentType }>({
+    mutationFn: ({ localUri, contentType }) => uploadProductImage(localUri, contentType),
   });
 }
 

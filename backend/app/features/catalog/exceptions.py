@@ -10,3 +10,9 @@ class DuplicateBarcodeError(Exception):
 
 class BarcodeNotFound(Exception):
     pass
+
+
+class ImageStorageNotConfigured(Exception):
+    """Raised when a product-image upload is requested before AWS S3 credentials are set."""
+
+    pass

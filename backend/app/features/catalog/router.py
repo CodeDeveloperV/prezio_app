@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings, get_settings
 from app.core.db import get_db
 from app.features.auth.dependencies import get_current_user
-from app.features.catalog.exceptions import BarcodeNotFound, DuplicateBarcodeError, ProductNotFound
+from app.features.catalog.exceptions import BarcodeNotFound, DuplicateBarcodeError, ImageStorageNotConfigured, ProductNotFound
+from app.features.catalog.image_storage import ImageStorageService
 from app.features.catalog.product_matching_service import ProductMatchingService
 from app.features.catalog.recognition_service import ProductRecognitionService
 from app.features.catalog.repository import (
@@ -19,6 +21,8 @@ from app.features.catalog.schemas import (
     CategoryRead,
     CatalogSearchResultRead,
     CreateProductRequest,
+    ImageUploadUrlRequest,
+    ImageUploadUrlResponse,
     ProductBarcodeRead,
     ProductRead,
     ScanBarcodeRequest,
@@ -39,6 +43,10 @@ router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 def get_catalog_service(db: AsyncSession = Depends(get_db)) -> CatalogService:
     return CatalogService(CategoryRepository(db), ProductRepository(db), StoreProductRepository(db), BrandRepository(db))
+
+
+def get_image_storage_service(settings: Settings = Depends(get_settings)) -> ImageStorageService:
+    return ImageStorageService(settings)
 
 
 def get_recognition_service(db: AsyncSession = Depends(get_db)) -> ProductRecognitionService:
@@ -124,6 +132,23 @@ async def attach_barcode(
         raise HTTPException(409, "Barcode already registered for a different product at this store") from exc
 
     return ProductBarcodeRead.model_validate(barcode)
+
+
+@router.post("/products/image-upload-url", response_model=ImageUploadUrlResponse)
+async def create_image_upload_url(
+    payload: ImageUploadUrlRequest,
+    current_user: User = Depends(get_current_user),
+    service: ImageStorageService = Depends(get_image_storage_service),
+) -> ImageUploadUrlResponse:
+    """Returns a short-lived presigned S3 PUT URL. The mobile client uploads the image bytes
+    directly to S3 with it, then submits the resulting `image_url` to POST /catalog/products --
+    AWS credentials never leave the backend."""
+    try:
+        upload = service.create_presigned_upload(content_type=payload.content_type)
+    except ImageStorageNotConfigured as exc:
+        raise HTTPException(503, str(exc)) from exc
+
+    return ImageUploadUrlResponse(upload_url=upload.upload_url, image_url=upload.image_url)
 
 
 @router.post("/products", response_model=ProductRead, status_code=201)
