@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { HTTPError } from 'ky';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import { useBarcodeScannerOutput } from 'react-native-vision-camera-barcode-scanner';
+import { useBarcodeScannerOutput, type TargetBarcodeFormat } from 'react-native-vision-camera-barcode-scanner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Input, Text, XStack, YStack } from 'tamagui';
 
@@ -48,6 +48,11 @@ type RecentScanEntry = {
 };
 
 const RECENT_SCANS_LIMIT = 6;
+
+// Must be a stable reference: useBarcodeScannerOutput memoizes the camera output against this
+// array, and a fresh literal on every render would tear down and recreate the camera session
+// (visible as the preview never activating until re-renders settle) on every parent re-render.
+const SCAN_BARCODE_FORMATS: TargetBarcodeFormat[] = ['all-formats'];
 
 const styles = StyleSheet.create({
   screen: {
@@ -763,7 +768,7 @@ export function ScanScreen({ route, navigation }: Props) {
   );
 
   const barcodeScannerOutput = useBarcodeScannerOutput({
-    barcodeFormats: ['all-formats'],
+    barcodeFormats: SCAN_BARCODE_FORMATS,
     onBarcodeScanned: (barcodes) => {
       if (sheet !== null || cameraErrorMessage !== null) {
         return;
