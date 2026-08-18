@@ -42,6 +42,7 @@ const immersivePurchaseRoutes = new Set([
   'Scan',
   'ScanResult',
   'ScanDisambiguation',
+  'ProductNotFound',
   'CreateProduct',
   'PriceHistory',
   'PriceUpdate',

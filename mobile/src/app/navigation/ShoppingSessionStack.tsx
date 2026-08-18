@@ -5,6 +5,7 @@ import { BranchSelectScreen } from '../../features/shopping-session/screens/Bran
 import { CreateProductScreen } from '../../features/shopping-session/screens/CreateProductScreen';
 import { PriceHistoryScreen } from '../../features/shopping-session/screens/PriceHistoryScreen';
 import { PriceUpdateScreen } from '../../features/shopping-session/screens/PriceUpdateScreen';
+import { ProductNotFoundScreen } from '../../features/shopping-session/screens/ProductNotFoundScreen';
 import { ScanDisambiguationScreen } from '../../features/shopping-session/screens/ScanDisambiguationScreen';
 import { ScanResultScreen } from '../../features/shopping-session/screens/ScanResultScreen';
 import { ScanScreen } from '../../features/shopping-session/ScanScreen';
@@ -30,6 +31,11 @@ export function ShoppingSessionStack() {
         name="ScanDisambiguation"
         component={ScanDisambiguationScreen}
         options={{ title: '¿Cuál es tu producto?', headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProductNotFound"
+        component={ProductNotFoundScreen}
+        options={{ title: 'Producto no encontrado', headerShown: false }}
       />
       <Stack.Screen
         name="CreateProduct"

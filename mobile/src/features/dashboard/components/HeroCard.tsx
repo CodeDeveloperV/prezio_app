@@ -42,31 +42,26 @@ export function HeroCard({
         padding="$4"
         gap="$3"
       >
-        <XStack alignItems="center" gap="$3">
-          <YStack
-            width={40}
-            height={40}
-            borderRadius="$full"
-            backgroundColor="rgba(34, 197, 94, 0.14)"
+        <YStack gap="$2">
+          <XStack
+            alignSelf="flex-start"
             alignItems="center"
-            justifyContent="center"
+            gap="$2"
+            backgroundColor="rgba(34, 197, 94, 0.14)"
+            borderRadius="$full"
+            paddingHorizontal="$3"
+            paddingVertical="$1.5"
           >
-            <IconShoppingCart color={colorTokens.primary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
-          </YStack>
-
-          <YStack flex={1} gap="$1">
-            <XStack alignItems="center" gap="$2">
-              <YStack width={6} height={6} borderRadius="$full" backgroundColor="$primary" />
-              <Text fontFamily="$body" fontSize="$xs" letterSpacing={1.2} color="$primary">
-                Compra en curso
-              </Text>
-            </XStack>
-
-            <Text fontFamily="$heading" fontSize="$lg" color="$white" numberOfLines={1}>
-              {activeSessionBranchLabel ?? 'Tu compra activa'}
+            <YStack width={6} height={6} borderRadius="$full" backgroundColor="$primary" />
+            <Text fontFamily="$heading" fontSize="$sm" letterSpacing={1.2} color="$primary">
+              Compra en curso
             </Text>
-          </YStack>
-        </XStack>
+          </XStack>
+
+          <Text fontFamily="$body" fontSize="$md" color="$white">
+            {activeSessionBranchLabel ?? 'Tu compra activa'}
+          </Text>
+        </YStack>
 
         <YStack gap="$1">
           <Text fontFamily="$heading" fontSize="$display" color="$primary">
@@ -84,7 +79,7 @@ export function HeroCard({
           disabled={isPrimaryActionLoading}
           pressStyle={primaryPressStyle}
           borderRadius="$4"
-          paddingVertical="$4"
+          paddingVertical="$2"
           minHeight={56}
           icon={
             isPrimaryActionLoading ? (
@@ -151,7 +146,7 @@ export function HeroCard({
             <IconPlus color={colorTokens.white} size={20} strokeWidth={STRONG_ICON_STROKE_WIDTH} />
           )
         }
-        paddingVertical="$4"
+        paddingVertical="$2"
         minHeight={56}
       >
         <Text fontFamily="$heading" fontSize="$md" color="$white">

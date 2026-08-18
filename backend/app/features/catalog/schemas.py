@@ -176,7 +176,7 @@ class CreateProductRequest(BaseModel):
     """Fields collected when no candidate matched the scanned barcode. The resulting Product
     is created with status PENDING; the scanned barcode is attached automatically."""
 
-    image_url: str
+    image_url: str | None = None
     canonical_name: str
     brand_id: int | None = None
     brand_name: str | None = None

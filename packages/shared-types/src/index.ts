@@ -271,7 +271,7 @@ export interface ImageUploadUrlResponse {
 // Fields collected when no candidate matched the scanned barcode. The resulting Product is
 // created with status PENDING; the scanned barcode is attached automatically.
 export interface CreateProductRequest {
-  image_url: string;
+  image_url?: string | null;
   canonical_name: string;
   brand_id?: number | null;
   brand_name?: string | null;

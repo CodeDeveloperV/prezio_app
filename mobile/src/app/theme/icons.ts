@@ -20,6 +20,7 @@ export { default as IconHistory } from '@tabler/icons-react-native/IconHistory';
 export { default as IconChartLine } from '@tabler/icons-react-native/IconChartLine';
 export { default as IconPlus } from '@tabler/icons-react-native/IconPlus';
 export { default as IconChevronRight } from '@tabler/icons-react-native/IconChevronRight';
+export { default as IconChevronDown } from '@tabler/icons-react-native/IconChevronDown';
 export { default as IconBuildingStore } from '@tabler/icons-react-native/IconBuildingStore';
 export { default as IconReceipt } from '@tabler/icons-react-native/IconReceipt';
 export { default as IconMail } from '@tabler/icons-react-native/IconMail';

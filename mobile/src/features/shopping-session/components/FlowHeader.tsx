@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
@@ -20,7 +21,7 @@ const styles = StyleSheet.create({
 
 interface FlowHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   onBack: () => void;
 }
 
@@ -44,9 +45,13 @@ export function FlowHeader({ title, subtitle, onBack }: FlowHeaderProps) {
             {title}
           </Text>
           {subtitle ? (
-            <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">
-              {subtitle}
-            </Text>
+            typeof subtitle === 'string' ? (
+              <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">
+                {subtitle}
+              </Text>
+            ) : (
+              subtitle
+            )
           ) : null}
         </YStack>
 

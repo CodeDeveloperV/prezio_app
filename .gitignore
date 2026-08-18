@@ -32,3 +32,5 @@ mobile/ios/DerivedData/
 # --- OS / editor ---
 .DS_Store
 *.log
+
+.claude/worktrees

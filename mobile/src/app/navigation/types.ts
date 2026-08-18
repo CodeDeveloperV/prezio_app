@@ -48,6 +48,12 @@ export type ShoppingSessionStackParamList = {
     barcodeType: BarcodeType;
     candidates: ProductMatchCandidate[];
   };
+  ProductNotFound: {
+    storeBranchId?: number | null;
+    scanFlow?: 'quick' | 'purchase';
+    barcode: string;
+    barcodeType: BarcodeType;
+  };
   CreateProduct: {
     storeBranchId?: number | null;
     scanFlow?: 'quick' | 'purchase';

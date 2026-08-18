@@ -11,6 +11,11 @@ export const palette = {
   // Text-safe variant of `green`: same hue, dark enough to pass 4.5:1 contrast
   // on light surfaces (white/gray100), where `green` itself only reaches ~2.3:1.
   greenText: '#166534',
+  // Opaque pastel tint equivalent to `rgba(34, 197, 94, 0.08)` over white.
+  // Used (instead of the translucent form) as a Card's own backgroundColor:
+  // Android's `elevation` shadow needs an opaque backing to render cleanly,
+  // otherwise it bleeds through as a gray halo behind the tint.
+  greenSoft: '#EDFAF2',
   // Primary text color / dark-mode base surface.
   slate900: '#0F172A',
   // Secondary text.
@@ -31,6 +36,7 @@ export const colorTokens = {
   primary: palette.green,
   primaryPress: palette.greenPress,
   primaryText: palette.greenText,
+  primarySoft: palette.greenSoft,
   textPrimary: palette.slate900,
   textSecondary: palette.slate500,
   danger: palette.red500,

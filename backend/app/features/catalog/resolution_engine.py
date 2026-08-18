@@ -217,7 +217,7 @@ class CatalogResolutionEngine:
         brand_name: str | None,
         category_id: int,
         presentation: str | None,
-        image_url: str,
+        image_url: str | None,
         barcode: str,
         barcode_type: BarcodeType,
         store_id: int | None,
