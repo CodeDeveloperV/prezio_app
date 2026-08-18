@@ -12,3 +12,11 @@ class StoreBranchRead(ORMModel):
     store_id: int
     name: str
     city: str
+
+
+class StoreBranchWithStoreRead(ORMModel):
+    id: int
+    store_id: int
+    name: str
+    city: str
+    store_name: str

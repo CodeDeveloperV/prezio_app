@@ -38,6 +38,15 @@ const TAB_LABELS = {
 } as const;
 
 const primaryTabName = 'NewPurchase';
+const immersivePurchaseRoutes = new Set([
+  'Scan',
+  'ScanResult',
+  'ScanDisambiguation',
+  'CreateProduct',
+  'PriceHistory',
+  'PriceUpdate',
+  'CreateAlert',
+]);
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -121,7 +130,29 @@ const styles = StyleSheet.create({
   },
 });
 
+function getFocusedPurchaseRouteName(state: BottomTabBarProps['state']): string | null {
+  const focusedRoute = state.routes[state.index] as BottomTabBarProps['state']['routes'][number] & {
+    state?: { index?: number; routes?: Array<{ name: string }> };
+  };
+
+  if (focusedRoute.name !== 'NewPurchase') {
+    return null;
+  }
+
+  const nestedState = focusedRoute.state;
+  if (!nestedState || !nestedState.routes || nestedState.routes.length === 0) {
+    return 'Scan';
+  }
+
+  return nestedState.routes[nestedState.index ?? nestedState.routes.length - 1]?.name ?? null;
+}
+
 function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarProps) {
+  const focusedRouteName = getFocusedPurchaseRouteName(state);
+  if (focusedRouteName && immersivePurchaseRoutes.has(focusedRouteName)) {
+    return null;
+  }
+
   return (
     <View style={styles.tabBarShell}>
       <View style={styles.tabBarRow}>
@@ -197,6 +228,11 @@ function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarPro
 }
 
 function PrezioTabBar(props: BottomTabBarProps) {
+  const focusedRouteName = getFocusedPurchaseRouteName(props.state);
+  if (focusedRouteName && immersivePurchaseRoutes.has(focusedRouteName)) {
+    return null;
+  }
+
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <PrezioTabBarContent {...props} />

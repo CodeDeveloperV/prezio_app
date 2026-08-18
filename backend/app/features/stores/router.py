@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.features.stores.repository import StoreBranchRepository, StoreRepository
-from app.features.stores.schemas import StoreBranchRead, StoreRead
+from app.features.stores.schemas import StoreBranchRead, StoreBranchWithStoreRead, StoreRead
 from app.features.stores.service import StoreService
 
 router = APIRouter(prefix="/stores", tags=["stores"])
@@ -25,3 +25,19 @@ async def list_store_branches(
 ) -> list[StoreBranchRead]:
     branches = await service.list_branches(store_id)
     return [StoreBranchRead.model_validate(branch) for branch in branches]
+
+
+@router.get("/branches/{branch_id}", response_model=StoreBranchWithStoreRead)
+async def get_store_branch(
+    branch_id: int, service: StoreService = Depends(get_store_service)
+) -> StoreBranchWithStoreRead:
+    branch = await service.get_branch(branch_id)
+    if branch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store branch not found")
+    return StoreBranchWithStoreRead(
+        id=branch.id,
+        store_id=branch.store_id,
+        name=branch.name,
+        city=branch.city,
+        store_name=branch.store.name,
+    )

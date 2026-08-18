@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -122,6 +122,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
       ? offerLabel(heroOffer)
       : null;
   const isQuickScan = scanFlow === 'quick';
+  const isPurchaseFlow = scanFlow === 'purchase';
 
   const addToActiveListMutation = useMutation({
     mutationFn: async () => {
@@ -177,6 +178,20 @@ export function ScanResultScreen({ route, navigation }: Props) {
     await addToActiveListMutation.mutateAsync();
   };
 
+  useEffect(() => {
+    if (!addedToActiveList) {
+      return undefined;
+    }
+
+    const timeout = setTimeout(() => {
+      navigation.replace('Scan', { storeBranchId: storeBranchId ?? undefined, scanFlow });
+    }, 650);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [addedToActiveList, navigation, scanFlow, storeBranchId]);
+
   const handleStartNewPurchase = () => {
     setShowNoActivePurchaseModal(false);
     navigation.navigate('BranchSelect', {
@@ -201,6 +216,20 @@ export function ScanResultScreen({ route, navigation }: Props) {
       />
 
       <YStack gap="$4">
+        {addedToActiveList && (
+          <Card elevation={1} backgroundColor="rgba(34, 197, 94, 0.12)" borderRadius="$4" padding="$4" gap="$1">
+            <XStack alignItems="center" gap="$2">
+              <IconCheck color={colorTokens.primary} size={18} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <Text fontFamily="$heading" fontSize="$sm" color="$primary">
+                Agregado
+              </Text>
+            </XStack>
+            <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+              Puedes escanear el siguiente producto.
+            </Text>
+          </Card>
+        )}
+
         <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$4">
           <XStack alignItems="center" gap="$3">
             {product.image_url ? (
@@ -236,7 +265,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
               <XStack alignItems="center" gap="$2" flexWrap="wrap" marginTop="$1">
                 <YStack backgroundColor="rgba(34, 197, 94, 0.10)" borderRadius="$full" paddingHorizontal="$3" paddingVertical="$1.5">
                   <Text fontFamily="$body" fontSize="$xs" color="$primary">
-                    {isQuickScan ? 'Escaneo rápido' : fromSearch ? 'Búsqueda manual' : 'Código validado'}
+                    {isQuickScan ? 'Escaneo rápido' : isPurchaseFlow ? 'Continuar compra' : fromSearch ? 'Búsqueda manual' : 'Código validado'}
                   </Text>
                 </YStack>
                 {fromCache && (
@@ -287,7 +316,9 @@ export function ScanResultScreen({ route, navigation }: Props) {
                   ? heroBranchLabel
                     ? `Más bajo detectado en ${heroBranchLabel}`
                     : 'Mejor precio detectado en el catálogo'
-                  : `Precio en esta sucursal · actualizado ${formatDate(storeProduct?.last_verified_at ?? null)}`}
+                  : isPurchaseFlow
+                    ? `Precio en tu compra · actualizado ${formatDate(storeProduct?.last_verified_at ?? null)}`
+                    : `Precio en esta sucursal · actualizado ${formatDate(storeProduct?.last_verified_at ?? null)}`}
               </Text>
               {isQuickScan && heroOffer && (
                 <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">

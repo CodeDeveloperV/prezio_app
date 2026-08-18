@@ -12,3 +12,7 @@ class StoreService:
 
     async def list_branches(self, store_id: int) -> list[StoreBranch]:
         return await self.branches.list_by_store(store_id)
+
+    async def get_branch(self, branch_id: int) -> StoreBranch | None:
+        branches = await self.branches.list_by_ids([branch_id])
+        return branches[0] if branches else None
