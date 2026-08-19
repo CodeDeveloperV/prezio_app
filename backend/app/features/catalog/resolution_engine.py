@@ -11,6 +11,7 @@ may not exist yet even once the Product itself is resolved.
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
 
 from sqlalchemy.exc import IntegrityError
@@ -222,6 +223,9 @@ class CatalogResolutionEngine:
         barcode_type: BarcodeType,
         store_id: int | None,
         country: str | None,
+        store_branch_id: int | None,
+        initial_price: Decimal | None,
+        tax_rate_id: int | None,
         created_by: int,
     ) -> Product:
         """Only reached once the engine has already returned UNKNOWN (or the user rejected
@@ -282,6 +286,16 @@ class CatalogResolutionEngine:
             except IntegrityError as exc:
                 await self.db.rollback()
                 raise DuplicateBarcodeError(barcode) from exc
+
+        if store_branch_id is not None and initial_price is not None:
+            await self.store_products.add(
+                StoreProduct(
+                    store_branch_id=store_branch_id,
+                    product_id=product.id,
+                    current_price=initial_price,
+                    tax_rate_id=tax_rate_id,
+                )
+            )
 
         await self.db.commit()
         return product

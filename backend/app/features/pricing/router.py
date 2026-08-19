@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,8 +17,10 @@ from app.features.pricing.schemas import (
     PriceHistoryRead,
     PriceUpdateRequest,
     StoreProductRead,
+    TaxRateRead,
     UserReputationRead,
 )
+from app.features.pricing.tax_repository import TaxRateRepository
 from app.features.pricing.service import PricingService
 from app.features.reputation.repository import ReputationEventRepository
 from app.features.reputation.service import ReputationService
@@ -36,6 +38,16 @@ def get_pricing_service(db: AsyncSession = Depends(get_db), redis: Redis = Depen
         redis,
         ReputationService(ReputationEventRepository(db)),
     )
+
+
+@router.get("/tax-rates", response_model=list[TaxRateRead])
+async def list_tax_rates(
+    country: str = Query(min_length=2, max_length=2),
+    db: AsyncSession = Depends(get_db),
+) -> list[TaxRateRead]:
+    """Lists active rates for a country; a listing with no selected rate is exempt/not taxed."""
+    rates = await TaxRateRepository(db).list_active_by_country(country)
+    return [TaxRateRead.model_validate(rate) for rate in rates]
 
 
 @router.post("/store-products/{store_product_id}/price", response_model=StoreProductRead)

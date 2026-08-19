@@ -281,6 +281,11 @@ export interface CreateProductRequest {
   barcode_type?: BarcodeType;
   store_id?: number | null;
   country?: string | null;
+  // When present, the new product is also listed in this branch at the observed shelf price.
+  store_branch_id?: number | null;
+  initial_price?: number;
+  // null means exempt/not taxed. Rates are country-scoped and come from GET /pricing/tax-rates.
+  tax_rate_id?: number | null;
 }
 
 // POST /catalog/barcodes/{id}/report ("Producto incorrecto") -- no request body, any
@@ -300,11 +305,20 @@ export interface StoreProductRead {
   store_branch_id: number;
   product_id: number;
   current_price: number;
+  tax_rate_id?: number | null;
   currency: string;
   version: number;
   availability: Availability;
   last_verified_at: ISODateTime | null;
   last_verified_by: number | null;
+}
+
+export interface TaxRate {
+  id: number;
+  country: string;
+  code: string;
+  name: string;
+  rate: number;
 }
 
 // POST /pricing/store-products/{id}/confirm response ("✓ Coincide") — the returned

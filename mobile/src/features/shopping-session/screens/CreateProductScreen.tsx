@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet } from 'react
 // import { Image } from 'react-native';
 // import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Button, Card, Input, Text, XStack, YStack } from 'tamagui';
+import { Button, Card, Input, Switch, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import {
@@ -18,10 +18,9 @@ import {
 import { colorTokens } from '../../../app/theme/tokens';
 import { useCategoriesQuery } from '../../catalog/hooks/useCategoriesQuery';
 import { useCreateProductMutation /*, useUploadProductImageMutation */ } from '../../catalog/hooks/useCatalogMutations';
+import { useTaxRatesQuery } from '../../pricing/hooks/useTaxRatesQuery';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 import { FlowHeader } from '../components/FlowHeader';
-
-import type { Category /*, ImageUploadContentType */ } from '@prezio/shared-types';
 
 // const SUPPORTED_UPLOAD_TYPES: ImageUploadContentType[] = ['image/jpeg', 'image/png', 'image/webp'];
 //
@@ -104,10 +103,12 @@ function SelectOptionRow({
   label,
   isSelected,
   onPress,
+  indented = false,
 }: {
   label: string;
   isSelected: boolean;
   onPress: () => void;
+  indented?: boolean;
 }) {
   return (
     <XStack
@@ -117,6 +118,7 @@ function SelectOptionRow({
       justifyContent="space-between"
       minHeight={52}
       paddingHorizontal="$2"
+      paddingLeft={indented ? '$5' : '$2'}
     >
       <Text fontFamily="$body" fontSize="$md" color={isSelected ? '$primary' : '$color'}>
         {label}
@@ -139,21 +141,41 @@ export function CreateProductScreen({ route, navigation }: Props) {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isUnitPickerOpen, setIsUnitPickerOpen] = useState(false);
+  const [price, setPrice] = useState('');
+  const [priceTouched, setPriceTouched] = useState(false);
+  const [isTaxable, setIsTaxable] = useState(false);
+  const [taxRateId, setTaxRateId] = useState<number | null>(null);
+  const [isTaxPickerOpen, setIsTaxPickerOpen] = useState(false);
   const [nameTouched, setNameTouched] = useState(false);
   const [categoryTouched, setCategoryTouched] = useState(false);
 
   const categoriesQuery = useCategoriesQuery();
   const createProductMutation = useCreateProductMutation();
+  const taxRatesQuery = useTaxRatesQuery('PA');
   // const uploadImageMutation = useUploadProductImageMutation();
 
   const selectedCategory = categoriesQuery.data?.find((category) => category.id === categoryId) ?? null;
+  const categories = categoriesQuery.data ?? [];
+  const categoryGroups = categories
+    .filter((category) => category.parent_id === null)
+    .map((group) => ({
+      group,
+      children: categories.filter((category) => category.parent_id === group.id),
+    }))
+    .filter(({ children }) => children.length > 0);
   const presentation = presentationQuantity.trim() && presentationUnit
     ? `${presentationQuantity.trim()} ${presentationUnit}`
     : '';
-  const canSubmit = Boolean(canonicalName.trim()) && categoryId !== null;
+  const normalizedPrice = price.trim().replace(',', '.');
+  const isValidPrice = /^\d+(\.\d{1,2})?$/.test(normalizedPrice) && Number(normalizedPrice) > 0;
+  const standardTaxRate = taxRatesQuery.data?.find((rate) => rate.code === 'ITBMS_7') ?? null;
+  const selectedTaxRate = taxRatesQuery.data?.find((rate) => rate.id === taxRateId) ?? standardTaxRate;
+  const effectiveTaxRateId = isTaxable ? selectedTaxRate?.id ?? null : null;
+  const canSubmit = Boolean(canonicalName.trim()) && categoryId !== null && isValidPrice && storeBranchId !== undefined;
   const isSubmitDisabled = !canSubmit || createProductMutation.isPending;
   const nameError = nameTouched && !canonicalName.trim() ? 'Ingresa el nombre del producto.' : null;
   const categoryError = categoryTouched && categoryId === null ? 'Selecciona una categoría.' : null;
+  const priceError = priceTouched && !isValidPrice ? 'Ingresa un precio mayor que 0 con máximo 2 decimales.' : null;
 
   // const handlePickImage = async (source: 'camera' | 'library') => {
   //   const pick = source === 'camera' ? launchCamera : launchImageLibrary;
@@ -174,6 +196,7 @@ export function CreateProductScreen({ route, navigation }: Props) {
   const handleSubmit = () => {
     setNameTouched(true);
     setCategoryTouched(true);
+    setPriceTouched(true);
     if (!canSubmit || categoryId === null) {
       return;
     }
@@ -185,6 +208,9 @@ export function CreateProductScreen({ route, navigation }: Props) {
         category_id: categoryId,
         barcode,
         barcode_type: barcodeType,
+        store_branch_id: storeBranchId,
+        initial_price: Number(normalizedPrice),
+        tax_rate_id: effectiveTaxRateId,
       },
       {
         onSuccess: (product) =>
@@ -371,7 +397,6 @@ export function CreateProductScreen({ route, navigation }: Props) {
             ) : (
               <XStack
                 onPress={() => {
-                  setCategoryTouched(true);
                   setIsCategoryPickerOpen(true);
                 }}
                 pressStyle={selectRowPressStyle}
@@ -417,23 +442,48 @@ export function CreateProductScreen({ route, navigation }: Props) {
                 <Text fontFamily="$heading" fontSize="$lg" color="$color">
                   Selecciona una categoría
                 </Text>
-                <YStack onPress={() => setIsCategoryPickerOpen(false)} padding="$2">
+                <YStack
+                  onPress={() => setIsCategoryPickerOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar selector de categorías"
+                  width={48}
+                  height={48}
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <IconX color={colorTokens.textSecondary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
                 </YStack>
               </XStack>
               <FlatList
-                data={categoriesQuery.data ?? []}
-                keyExtractor={(category) => String(category.id)}
-                ItemSeparatorComponent={SelectRowSeparator}
-                renderItem={({ item }: { item: Category }) => (
-                  <SelectOptionRow
-                    label={item.name}
-                    isSelected={categoryId === item.id}
-                    onPress={() => {
-                      setCategoryId(item.id);
-                      setIsCategoryPickerOpen(false);
-                    }}
-                  />
+                data={categoryGroups}
+                keyExtractor={({ group }) => String(group.id)}
+                renderItem={({ item, index }) => (
+                  <YStack paddingBottom={index === categoryGroups.length - 1 ? '$0' : '$3'}>
+                    <Text
+                      fontFamily="$heading"
+                      fontSize="$sm"
+                      color="$colorSecondary"
+                      paddingHorizontal="$2"
+                      paddingTop="$2"
+                      paddingBottom="$1"
+                    >
+                      {item.group.name}
+                    </Text>
+                    {item.children.map((category, childIndex) => (
+                      <YStack key={category.id}>
+                        {childIndex > 0 ? <SelectRowSeparator /> : null}
+                        <SelectOptionRow
+                          label={category.name}
+                          indented
+                          isSelected={categoryId === category.id}
+                          onPress={() => {
+                            setCategoryId(category.id);
+                            setIsCategoryPickerOpen(false);
+                          }}
+                        />
+                      </YStack>
+                    ))}
+                  </YStack>
                 )}
               />
             </Pressable>
@@ -452,7 +502,15 @@ export function CreateProductScreen({ route, navigation }: Props) {
                 <Text fontFamily="$heading" fontSize="$lg" color="$color">
                   Selecciona una unidad
                 </Text>
-                <YStack onPress={() => setIsUnitPickerOpen(false)} padding="$2">
+                <YStack
+                  onPress={() => setIsUnitPickerOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar selector de unidades"
+                  width={48}
+                  height={48}
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <IconX color={colorTokens.textSecondary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
                 </YStack>
               </XStack>
@@ -545,6 +603,112 @@ export function CreateProductScreen({ route, navigation }: Props) {
             </XStack>
           </Card>
         </YStack>
+
+        <YStack gap="$3">
+          <SectionHeading title="Precio e impuesto" subtitle="Registra el precio mostrado hoy en esta sucursal." />
+
+          <Card elevation={1} backgroundColor="$surface" borderRadius="$4" padding="$4" gap="$4">
+            <YStack gap="$2">
+              <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                Precio en tienda *
+              </Text>
+              <Input
+                placeholder="0.00"
+                value={price}
+                onChangeText={setPrice}
+                onBlur={() => setPriceTouched(true)}
+                keyboardType="decimal-pad"
+                minHeight={56}
+                borderRadius="$4"
+                borderWidth={1}
+                borderColor={priceError ? '$danger' : '$borderColor'}
+                backgroundColor="$background"
+                paddingHorizontal="$4"
+                fontFamily="$body"
+                fontSize="$md"
+                placeholderTextColor="$colorSecondary"
+              />
+              {priceError ? (
+                <Text fontFamily="$body" fontSize="$xs" color="$danger">{priceError}</Text>
+              ) : (
+                <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                  Usa hasta dos decimales. El precio se guarda tal como aparece en el estante.
+                </Text>
+              )}
+            </YStack>
+
+            <YStack gap="$3" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$4">
+              <XStack alignItems="center" justifyContent="space-between" gap="$3">
+                <YStack flex={1} gap="$1">
+                  <Text fontFamily="$heading" fontSize="$sm" color="$color">¿Aplica impuesto?</Text>
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                    Actívalo para elegir la tasa que corresponde al producto.
+                  </Text>
+                </YStack>
+                <Switch checked={isTaxable} onCheckedChange={setIsTaxable}>
+                  <Switch.Thumb />
+                </Switch>
+              </XStack>
+
+              {isTaxable ? (
+                <XStack
+                  onPress={() => setIsTaxPickerOpen(true)}
+                  pressStyle={selectRowPressStyle}
+                  disabled={taxRatesQuery.isPending || taxRatesQuery.isError}
+                  alignItems="center"
+                  justifyContent="space-between"
+                  minHeight={56}
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  backgroundColor="$background"
+                  paddingHorizontal="$4"
+                >
+                  <Text fontFamily="$body" fontSize="$md" color={selectedTaxRate ? '$color' : '$colorSecondary'}>
+                    {taxRatesQuery.isPending ? 'Cargando tasas...' : (selectedTaxRate?.name ?? 'Selecciona una tasa')}
+                  </Text>
+                  <IconChevronDown color={colorTokens.textSecondary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                </XStack>
+              ) : null}
+              {isTaxable && taxRatesQuery.isError ? (
+                <Text fontFamily="$body" fontSize="$xs" color="$danger">No pudimos cargar las tasas de impuesto.</Text>
+              ) : null}
+            </YStack>
+          </Card>
+        </YStack>
+
+        <Modal
+          transparent
+          visible={isTaxPickerOpen}
+          animationType="slide"
+          onRequestClose={() => setIsTaxPickerOpen(false)}
+        >
+          <Pressable style={styles.selectModalBackdrop} onPress={() => setIsTaxPickerOpen(false)}>
+            <Pressable style={styles.selectModalSheet} onPress={() => undefined}>
+              <XStack alignItems="center" justifyContent="space-between" marginBottom="$3">
+                <Text fontFamily="$heading" fontSize="$lg" color="$color">Selecciona el impuesto</Text>
+                <YStack onPress={() => setIsTaxPickerOpen(false)} width={48} height={48} alignItems="center" justifyContent="center">
+                  <IconX color={colorTokens.textSecondary} size={20} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                </YStack>
+              </XStack>
+              <FlatList
+                data={taxRatesQuery.data ?? []}
+                keyExtractor={(rate) => String(rate.id)}
+                ItemSeparatorComponent={SelectRowSeparator}
+                renderItem={({ item }) => (
+                  <SelectOptionRow
+                    label={item.name}
+                    isSelected={effectiveTaxRateId === item.id}
+                    onPress={() => {
+                      setTaxRateId(item.id);
+                      setIsTaxPickerOpen(false);
+                    }}
+                  />
+                )}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <Card
           elevation={1}

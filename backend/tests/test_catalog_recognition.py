@@ -2,7 +2,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.features.catalog.models import Brand, Category, Product, ProductBarcode
-from app.features.pricing.models import StoreProduct
+from app.features.pricing.models import StoreProduct, TaxRate
 from app.features.stores.models import Store, StoreBranch
 
 SCANNER_CREDENTIALS = {"email": "scanner@example.com", "password": "s3cret123"}
@@ -236,6 +236,41 @@ async def test_create_product_from_scan_creates_pending_product_with_barcode(asy
     )
     assert scan_response.json()["status"] == "found"
     assert scan_response.json()["product"]["id"] == body["id"]
+
+
+async def test_create_product_from_scan_registers_branch_price_and_tax(async_client: AsyncClient) -> None:
+    _, branch_id = await seed_branch(async_client)
+    category_id = await seed_category(async_client)
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        tax_rate = TaxRate(country="PA", code="ITBMS_7", name="ITBMS 7%", rate="0.0700")
+        session.add(tax_rate)
+        await session.commit()
+        await session.refresh(tax_rate)
+
+    token = await get_access_token(async_client)
+    response = await async_client.post(
+        "/catalog/products",
+        json={
+            "canonical_name": "Yogur natural 1L",
+            "category_id": category_id,
+            "barcode": "1234567890123",
+            "store_branch_id": branch_id,
+            "initial_price": "3.45",
+            "tax_rate_id": tax_rate.id,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    scan_response = await async_client.post(
+        "/catalog/scan",
+        json={"barcode": "1234567890123", "store_branch_id": branch_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    store_product = scan_response.json()["store_product"]
+    assert store_product["current_price"] == "3.45"
+    assert store_product["tax_rate_id"] == tax_rate.id
 
 
 async def test_report_incorrect_barcode_marks_it_rejected(async_client: AsyncClient) -> None:

@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.features.catalog.models import Category, Product
-from app.features.pricing.models import StoreProduct
+from app.features.pricing.models import StoreProduct, TaxRate
 from app.features.stores.models import Store, StoreBranch
 
 PRICER_CREDENTIALS = {"email": "pricer@example.com", "password": "s3cret123"}
@@ -42,6 +42,26 @@ async def get_access_token(async_client: AsyncClient) -> str:
     await async_client.post("/auth/register", json=PRICER_CREDENTIALS)
     login = await async_client.post("/auth/login", json=PRICER_CREDENTIALS)
     return login.json()["access_token"]
+
+
+async def test_list_tax_rates_returns_only_active_rates_for_country(async_client: AsyncClient) -> None:
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        session.add_all(
+            [
+                TaxRate(country="PA", code="ITBMS_7", name="ITBMS 7%", rate="0.0700"),
+                TaxRate(country="PA", code="RETIRED", name="Retired", rate="0.0100", is_active=False),
+                TaxRate(country="CR", code="IVA_13", name="IVA 13%", rate="0.1300"),
+            ]
+        )
+        await session.commit()
+
+    response = await async_client.get("/pricing/tax-rates", params={"country": "pa"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0] == {"id": 1, "country": "PA", "code": "ITBMS_7", "name": "ITBMS 7%", "rate": "0.0700"}
 
 
 async def test_update_price_with_matching_version_succeeds(async_client: AsyncClient) -> None:

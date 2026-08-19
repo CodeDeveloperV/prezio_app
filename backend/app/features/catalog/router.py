@@ -32,6 +32,7 @@ from app.features.catalog.schemas import (
 from app.features.catalog.service import CatalogService
 from app.features.pricing.repository import StoreProductRepository
 from app.features.pricing.schemas import StoreProductRead
+from app.features.pricing.tax_repository import TaxRateRepository
 from app.features.reputation.repository import ReputationEventRepository
 from app.features.reputation.service import ReputationService
 from app.features.stores.exceptions import StoreBranchNotFound
@@ -61,7 +62,13 @@ def get_recognition_service(db: AsyncSession = Depends(get_db)) -> ProductRecogn
         ProductMatchingService(products),
         ReputationService(ReputationEventRepository(db)),
     )
-    return ProductRecognitionService(engine, ProductBarcodeRepository(db), StoreBranchRepository(db), brands)
+    return ProductRecognitionService(
+        engine,
+        ProductBarcodeRepository(db),
+        StoreBranchRepository(db),
+        brands,
+        TaxRateRepository(db),
+    )
 
 
 @router.get("/categories", response_model=list[CategoryRead])
@@ -161,6 +168,10 @@ async def create_product_from_scan(
         product = await service.create_product_from_scan(payload, current_user.id)
     except DuplicateBarcodeError as exc:
         raise HTTPException(409, "Barcode already registered for a different product at this store") from exc
+    except StoreBranchNotFound as exc:
+        raise HTTPException(404, "Store branch not found") from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
     return ProductRead.model_validate(product)
 

@@ -1,10 +1,28 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.features.pricing.enums import Availability, PriceUpdateSource, StoreProductStatus
 from app.shared.models_base import Base
+
+
+class TaxRate(Base):
+    """A sale tax rate that applies within one country.
+
+    Rates are data rather than an enum so jurisdictions can add, retire, or revise taxes
+    without a deploy. A missing rate on a StoreProduct means the listing is exempt/not taxed.
+    """
+
+    __tablename__ = "tax_rates"
+    __table_args__ = (UniqueConstraint("country", "code", name="uq_tax_rates_country_code"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    country: Mapped[str] = mapped_column(String(2), index=True)
+    code: Mapped[str] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(255))
+    rate: Mapped[float] = mapped_column(Numeric(5, 4))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class StoreProduct(Base):
@@ -19,6 +37,9 @@ class StoreProduct(Base):
     store_branch_id: Mapped[int] = mapped_column(ForeignKey("store_branches.id"), index=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     current_price: Mapped[float] = mapped_column(Numeric(10, 2))
+    # Shelf prices are captured as displayed by the retailer. Tax is separate metadata because
+    # an equivalent product can have a different tax treatment in another country.
+    tax_rate_id: Mapped[int | None] = mapped_column(ForeignKey("tax_rates.id"), nullable=True, index=True)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     version: Mapped[int] = mapped_column(default=1)
     availability: Mapped[Availability] = mapped_column(Enum(Availability, native_enum=False), default=Availability.UNKNOWN)
@@ -33,6 +54,7 @@ class StoreProduct(Base):
 
     price_history: Mapped[list["PriceHistory"]] = relationship(back_populates="store_product")
     confirmations: Mapped[list["PriceConfirmation"]] = relationship(back_populates="store_product")
+    tax_rate: Mapped["TaxRate | None"] = relationship()
 
 
 class PriceHistory(Base):
