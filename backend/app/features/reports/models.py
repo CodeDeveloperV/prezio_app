@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Enum, ForeignKey, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.features.reports.enums import ReportPriority, ReportResolutionType, ReportStatus, ReportType
+from app.features.reports.enums import ProductCorrectionKind, ReportPriority, ReportResolutionType, ReportStatus, ReportType
 from app.shared.models_base import Base
 
 
@@ -40,6 +40,10 @@ class Report(Base):
     reporter_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True, index=True)
+    barcode_id: Mapped[int | None] = mapped_column(ForeignKey("product_barcodes.id"), nullable=True, index=True)
+    correction_kind: Mapped[ProductCorrectionKind | None] = mapped_column(
+        Enum(ProductCorrectionKind, native_enum=False), nullable=True, index=True
+    )
     store_product_id: Mapped[int | None] = mapped_column(
         ForeignKey("store_products.id"), nullable=True, index=True
     )

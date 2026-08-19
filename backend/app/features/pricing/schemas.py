@@ -52,6 +52,12 @@ class PriceUpdateRequest(BaseModel):
     version: int
 
 
+class StoreProductCreate(BaseModel):
+    product_id: int
+    store_branch_id: int
+    current_price: Decimal
+
+
 class PriceConflictResponse(BaseModel):
     detail: str = "Price was updated concurrently by someone else"
     current_price: Decimal

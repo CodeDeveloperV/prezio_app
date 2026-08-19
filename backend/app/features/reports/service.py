@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog.exceptions import ProductNotFound
 from app.features.catalog.models import Product
-from app.features.catalog.repository import ProductRepository
+from app.features.catalog.repository import ProductBarcodeRepository, ProductRepository
 from app.features.organizations.enums import OrganizationRole
 from app.features.organizations.models import OrganizationMember
 from app.features.organizations.service import OrganizationMembershipService
@@ -68,6 +68,7 @@ class ReportService:
         reports: ReportRepository,
         membership: OrganizationMembershipService,
         products: ProductRepository,
+        barcodes: ProductBarcodeRepository,
         store_products: StoreProductRepository,
         store_branches: StoreBranchRepository,
     ) -> None:
@@ -75,6 +76,7 @@ class ReportService:
         self.reports = reports
         self.membership = membership
         self.products = products
+        self.barcodes = barcodes
         self.store_products = store_products
         self.store_branches = store_branches
 
@@ -89,6 +91,12 @@ class ReportService:
             product = await self.products.get_by_id(payload.product_id)
             if product is None:
                 raise ProductNotFound(payload.product_id)
+        if payload.barcode_id is not None:
+            barcode = await self.barcodes.get_by_id(payload.barcode_id)
+            if barcode is None:
+                raise InvalidReportScope(f"barcode_id {payload.barcode_id} does not exist")
+            if payload.product_id is not None and barcode.product_id != payload.product_id:
+                raise InvalidReportScope("barcode_id does not belong to product_id")
         if payload.store_product_id is not None:
             store_product = await self.store_products.get_by_id(payload.store_product_id)
             if store_product is None:
@@ -120,6 +128,8 @@ class ReportService:
             priority=DEFAULT_PRIORITY_BY_TYPE[payload.type],
             reporter_user_id=reporter_user_id,
             product_id=payload.product_id,
+            barcode_id=payload.barcode_id,
+            correction_kind=payload.correction_kind,
             store_product_id=payload.store_product_id,
             store_branch_id=resolved_branch_id,
             description=payload.description,

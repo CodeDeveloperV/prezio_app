@@ -403,12 +403,20 @@ export interface ShoppingListItem {
   // before this field existed, or with no active branch selected (see AnalyticsSummary's
   // unattributed_store_count/"Sin tienda registrada" handling).
   store_branch_id: number | null;
+  captured_store_product_id?: number | null;
+  captured_store_branch_id?: number | null;
+  captured_unit_price?: string | null;
+  price_captured_at?: ISODateTime | null;
 }
 
 export interface ShoppingListItemCreate {
   product_id: number;
   quantity?: number;
   client_request_id?: string;
+  captured_store_product_id?: number | null;
+  captured_store_branch_id?: number | null;
+  captured_unit_price?: string | null;
+  price_captured_at?: ISODateTime | null;
 }
 
 // Same optimistic-concurrency pattern as pricing's PriceUpdateRequest: submit the version you
@@ -1214,6 +1222,7 @@ export type ReportType =
   | 'other';
 
 export type ReportStatus = 'open' | 'in_review' | 'resolved' | 'dismissed';
+export type ProductCorrectionKind = 'wrong_product' | 'wrong_name' | 'wrong_brand' | 'wrong_presentation' | 'wrong_image';
 
 export type ReportPriority = 'low' | 'medium' | 'high' | 'critical';
 

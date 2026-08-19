@@ -146,6 +146,9 @@ class PricingService:
             reference_id=store_product_id,
         )
         await self.db.commit()
+        # Reuse the same StoreProduct channel; clients that only understand price updates ignore
+        # the additive verification metadata while newer clients can refresh freshness UI.
+        await self._publish_price_update(updated, source=PriceUpdateSource.COMMUNITY)
         return updated
 
     async def list_price_history(self, store_product_id: int) -> list[PriceHistoryRead]:
@@ -190,6 +193,8 @@ class PricingService:
                 "version": store_product.version,
                 "availability": store_product.availability.value,
                 "source": source.value,
+                "last_verified_at": store_product.last_verified_at.isoformat() if store_product.last_verified_at else None,
+                "last_verified_by": store_product.last_verified_by,
             }
         )
         await self.redis.publish(channel, payload)

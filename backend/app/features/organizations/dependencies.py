@@ -10,7 +10,7 @@ from app.core.redis import get_redis
 from app.features.auth.dependencies import get_current_user
 from app.features.b2b_analytics.repository import B2BAnalyticsRepository
 from app.features.b2b_analytics.service import B2BAnalyticsService
-from app.features.catalog.repository import BrandRepository, CategoryRepository, ProductRepository
+from app.features.catalog.repository import BrandRepository, CategoryRepository, ProductBarcodeRepository, ProductRepository
 from app.features.catalog.service import CatalogService
 from app.features.coupons.repository import CouponBranchRepository, CouponProductRepository, CouponRepository
 from app.features.coupons.service import CouponService
@@ -97,6 +97,7 @@ def get_promotion_service(
         PromotionProductRepository(db),
         membership,
         ProductRepository(db),
+        ProductBarcodeRepository(db),
         StoreProductRepository(db),
     )
 
@@ -124,6 +125,7 @@ def get_report_service(
         ReportRepository(db),
         membership,
         ProductRepository(db),
+        ProductBarcodeRepository(db),
         StoreProductRepository(db),
         StoreBranchRepository(db),
     )

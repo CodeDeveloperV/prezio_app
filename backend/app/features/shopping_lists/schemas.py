@@ -39,6 +39,7 @@ class ShoppingListItemCreate(BaseModel):
     product_id: int
     quantity: int = 1
     client_request_id: str | None = None
+    captured_store_product_id: int | None = None
 
 
 class ShoppingListItemUpdate(BaseModel):
@@ -58,6 +59,10 @@ class ShoppingListItemRead(ORMModel):
     checked_at: datetime | None
     price_at_check: Decimal | None
     store_branch_id: int | None
+    captured_store_product_id: int | None
+    captured_store_branch_id: int | None
+    captured_unit_price: Decimal | None
+    price_captured_at: datetime | None
 
 
 class ShoppingListSummaryPricingStatus(str, Enum):

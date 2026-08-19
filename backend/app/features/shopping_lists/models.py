@@ -40,6 +40,7 @@ class ShoppingList(Base):
 
 class ShoppingListItem(Base):
     __tablename__ = "shopping_list_items"
+    __table_args__ = (UniqueConstraint("shopping_list_id", "product_id", name="uq_shopping_list_items_list_product"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     shopping_list_id: Mapped[int] = mapped_column(ForeignKey("shopping_lists.id"), index=True)
@@ -69,6 +70,12 @@ class ShoppingListItem(Base):
     store_branch_id: Mapped[int | None] = mapped_column(
         ForeignKey("store_branches.id"), nullable=True, index=True
     )
+    # The shelf price explicitly confirmed while scanning. Unlike price_at_check this is not a
+    # purchase signal: it remains available while the product is still unchecked.
+    captured_store_product_id: Mapped[int | None] = mapped_column(ForeignKey("store_products.id"), nullable=True, index=True)
+    captured_store_branch_id: Mapped[int | None] = mapped_column(ForeignKey("store_branches.id"), nullable=True, index=True)
+    captured_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    price_captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     shopping_list: Mapped["ShoppingList"] = relationship(back_populates="items")
 

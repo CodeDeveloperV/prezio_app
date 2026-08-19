@@ -16,10 +16,12 @@ from app.features.pricing.repository import (
 from app.features.pricing.schemas import (
     PriceHistoryRead,
     PriceUpdateRequest,
+    StoreProductCreate,
     StoreProductRead,
     TaxRateRead,
     UserReputationRead,
 )
+from app.features.pricing.models import StoreProduct
 from app.features.pricing.tax_repository import TaxRateRepository
 from app.features.pricing.service import PricingService
 from app.features.reputation.repository import ReputationEventRepository
@@ -75,6 +77,27 @@ async def update_store_product_price(
         )
 
     return StoreProductRead.model_validate(updated)
+
+
+@router.post("/store-products", response_model=StoreProductRead, status_code=201)
+async def create_store_product_price(
+    payload: StoreProductCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StoreProductRead:
+    """Registers the first observed shelf price for an existing Product at a branch."""
+    repository = StoreProductRepository(db)
+    existing = await repository.get_by_branch_and_product(payload.store_branch_id, payload.product_id)
+    if existing is not None:
+        return StoreProductRead.model_validate(existing)
+    listing = StoreProduct(
+        product_id=payload.product_id,
+        store_branch_id=payload.store_branch_id,
+        current_price=payload.current_price,
+    )
+    await repository.add(listing)
+    await db.commit()
+    return StoreProductRead.model_validate(listing)
 
 
 @router.post("/store-products/{store_product_id}/confirm", response_model=StoreProductRead)

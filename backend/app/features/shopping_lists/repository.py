@@ -107,6 +107,48 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_list_and_product(self, shopping_list_id: int, product_id: int) -> ShoppingListItem | None:
+        result = await self.session.execute(
+            select(ShoppingListItem).where(
+                ShoppingListItem.shopping_list_id == shopping_list_id,
+                ShoppingListItem.product_id == product_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def increment_or_create(
+        self, *, shopping_list_id: int, product_id: int, quantity: int, added_by: int,
+        client_request_id: str | None, captured_store_product_id: int | None,
+        captured_store_branch_id: int | None, captured_unit_price: Decimal | None,
+        price_captured_at: datetime | None,
+    ) -> tuple[ShoppingListItem, bool]:
+        """One row per product. The unique constraint turns concurrent creates into a safe retry."""
+        if client_request_id:
+            existing_request = await self.get_by_client_request_id(shopping_list_id, client_request_id)
+            if existing_request:
+                return existing_request, False
+        existing = await self.get_by_list_and_product(shopping_list_id, product_id)
+        if existing:
+            existing.quantity += quantity
+            existing.version += 1
+            if captured_store_product_id is not None:
+                existing.captured_store_product_id = captured_store_product_id
+                existing.captured_store_branch_id = captured_store_branch_id
+                existing.captured_unit_price = captured_unit_price
+                existing.price_captured_at = price_captured_at
+            await self.session.flush()
+            return existing, False
+        item = ShoppingListItem(
+            shopping_list_id=shopping_list_id, product_id=product_id, quantity=quantity,
+            added_by=added_by, client_request_id=client_request_id,
+            captured_store_product_id=captured_store_product_id,
+            captured_store_branch_id=captured_store_branch_id,
+            captured_unit_price=captured_unit_price, price_captured_at=price_captured_at,
+        )
+        self.session.add(item)
+        await self.session.flush()
+        return item, True
+
     async def update_if_version_matches(
         self,
         item_id: int,

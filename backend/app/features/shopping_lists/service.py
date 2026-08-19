@@ -274,22 +274,22 @@ class ShoppingListService:
         if not self.policy.can_edit_items(member, shopping_list):
             raise ShoppingListPermissionDenied("You cannot add items to this list")
 
-        if client_request_id is not None:
-            existing = await self.items.get_by_client_request_id(shopping_list_id, client_request_id)
-            if existing is not None:
-                return existing
-
-        item = ShoppingListItem(
-            shopping_list_id=shopping_list_id,
-            product_id=product_id,
-            quantity=quantity,
-            added_by=added_by,
+        store_product = None
+        if shopping_list.active_store_branch_id is not None:
+            store_product = await self.store_products.get_by_branch_and_product(
+                shopping_list.active_store_branch_id, product_id
+            )
+        item, created = await self.items.increment_or_create(
+            shopping_list_id=shopping_list_id, product_id=product_id, quantity=quantity, added_by=added_by,
             client_request_id=client_request_id,
+            captured_store_product_id=store_product.id if store_product else None,
+            captured_store_branch_id=store_product.store_branch_id if store_product else None,
+            captured_unit_price=store_product.current_price if store_product else None,
+            price_captured_at=datetime.now(timezone.utc) if store_product else None,
         )
-        await self.items.add(item)
         await self.db.commit()
         await self._publish_list_event(
-            shopping_list_id, "item_added", entity_id=item.id, version=item.version, payload=self._item_payload(item)
+            shopping_list_id, "item_added" if created else "item_updated", entity_id=item.id, version=item.version, payload=self._item_payload(item)
         )
         return item
 
@@ -322,8 +322,8 @@ class ShoppingListService:
         store_branch_id = None
         if update_checked_snapshot and checked:
             checked_at = datetime.now(timezone.utc)
-            store_branch_id = shopping_list.active_store_branch_id
-            price_at_check = await self._price_at_branch(existing.product_id, store_branch_id)
+            store_branch_id = existing.captured_store_branch_id or shopping_list.active_store_branch_id
+            price_at_check = existing.captured_unit_price or await self._price_at_branch(existing.product_id, store_branch_id)
 
         updated = await self.items.update_if_version_matches(
             item_id,

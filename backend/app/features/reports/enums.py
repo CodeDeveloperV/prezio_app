@@ -11,6 +11,14 @@ class ReportType(str, enum.Enum):
     OTHER = "other"
 
 
+class ProductCorrectionKind(str, enum.Enum):
+    WRONG_PRODUCT = "wrong_product"
+    WRONG_NAME = "wrong_name"
+    WRONG_BRAND = "wrong_brand"
+    WRONG_PRESENTATION = "wrong_presentation"
+    WRONG_IMAGE = "wrong_image"
+
+
 class ReportStatus(str, enum.Enum):
     OPEN = "open"
     IN_REVIEW = "in_review"

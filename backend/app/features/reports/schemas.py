@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, model_validator
 
-from app.features.reports.enums import REQUIRED_SCOPE_BY_TYPE, ReportPriority, ReportResolutionType, ReportStatus, ReportType
+from app.features.reports.enums import ProductCorrectionKind, REQUIRED_SCOPE_BY_TYPE, ReportPriority, ReportResolutionType, ReportStatus, ReportType
 
 
 class ReportCreate(BaseModel):
@@ -14,6 +14,8 @@ class ReportCreate(BaseModel):
 
     type: ReportType
     product_id: int | None = None
+    barcode_id: int | None = None
+    correction_kind: ProductCorrectionKind | None = None
     store_product_id: int | None = None
     store_branch_id: int | None = None
     description: str | None = None
