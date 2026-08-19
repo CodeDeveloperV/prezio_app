@@ -59,7 +59,7 @@ export function BranchSelectScreen({ route, navigation }: Props) {
       }
 
       queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
-      navigation.replace('Scan', { storeBranchId: branchId, scanFlow: 'purchase' });
+      navigation.replace('PurchaseSummary', { shoppingListId: shoppingList.id });
     } finally {
       setIsSubmitting(false);
     }

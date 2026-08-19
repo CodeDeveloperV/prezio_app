@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import and_, delete, select, update
 
 from app.features.shopping_lists.enums import ShoppingListInvitationStatus, ShoppingListStatus
 from app.features.shopping_lists.models import (
@@ -10,6 +10,9 @@ from app.features.shopping_lists.models import (
     ShoppingListItem,
     ShoppingListMember,
 )
+from app.features.catalog.models import Brand, Product
+from app.features.pricing.models import StoreProduct
+from app.features.stores.models import Store, StoreBranch
 from app.shared.base_repository import BaseRepository
 
 
@@ -44,6 +47,20 @@ class ShoppingListRepository(BaseRepository[ShoppingList]):
         )
         await self.session.flush()
 
+    async def get_with_active_branch(self, shopping_list_id: int) -> tuple[ShoppingList, StoreBranch | None, Store | None] | None:
+        """Loads the list and its selected branch/chain in one query for the purchase summary."""
+        result = await self.session.execute(
+            select(ShoppingList, StoreBranch, Store)
+            .outerjoin(StoreBranch, StoreBranch.id == ShoppingList.active_store_branch_id)
+            .outerjoin(Store, Store.id == StoreBranch.store_id)
+            .where(ShoppingList.id == shopping_list_id)
+        )
+        row = result.one_or_none()
+        if row is None:
+            return None
+        shopping_list, branch, store = row
+        return shopping_list, branch, store
+
 
 class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
     model = ShoppingListItem
@@ -53,6 +70,28 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
             select(ShoppingListItem).where(ShoppingListItem.shopping_list_id == shopping_list_id)
         )
         return list(result.scalars().all())
+
+    async def list_summary_rows(
+        self, shopping_list_id: int, active_store_branch_id: int | None
+    ) -> list[tuple[ShoppingListItem, Product | None, Brand | None, StoreProduct | None]]:
+        """Bulk-resolves list items and only the selected branch's listing.
+
+        The join is intentionally based on ``product_id + active_store_branch_id``. Barcodes
+        never participate in this read model, and no price from another branch can join it.
+        """
+        store_product_join = and_(
+            StoreProduct.product_id == ShoppingListItem.product_id,
+            StoreProduct.store_branch_id == active_store_branch_id,
+        )
+        result = await self.session.execute(
+            select(ShoppingListItem, Product, Brand, StoreProduct)
+            .outerjoin(Product, Product.id == ShoppingListItem.product_id)
+            .outerjoin(Brand, Brand.id == Product.brand_id)
+            .outerjoin(StoreProduct, store_product_join)
+            .where(ShoppingListItem.shopping_list_id == shopping_list_id)
+            .order_by(ShoppingListItem.id.asc())
+        )
+        return list(result.tuples().all())
 
     async def delete_all_for_list(self, shopping_list_id: int) -> None:
         await self.session.execute(delete(ShoppingListItem).where(ShoppingListItem.shopping_list_id == shopping_list_id))

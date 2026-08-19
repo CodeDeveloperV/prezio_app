@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.websocket_manager import SHOPPING_LIST_UPDATES_CHANNEL_PREFIX, USER_INVITATIONS_CHANNEL_PREFIX
 from app.features.notifications.enums import NotificationType
 from app.features.notifications.service import NotificationService
+from app.features.comparison.enums import ProductComparisonStatus
+from app.features.pricing.enums import Availability, StoreProductStatus
+from app.features.pricing.models import StoreProduct
 from app.features.pricing.repository import StoreProductRepository
 from app.features.stores.exceptions import StoreBranchNotFound
 from app.features.stores.repository import StoreBranchRepository
@@ -42,6 +45,11 @@ from app.features.shopping_lists.repository import (
     ShoppingListItemRepository,
     ShoppingListMemberRepository,
     ShoppingListRepository,
+)
+from app.features.shopping_lists.schemas import (
+    ShoppingListSummaryItem,
+    ShoppingListSummaryPricingStatus,
+    ShoppingListSummaryRead,
 )
 from app.features.users.repository import UserRepository
 
@@ -184,6 +192,75 @@ class ShoppingListService:
         if not self.policy.can_view(member):
             raise ShoppingListAccessDenied(shopping_list_id)
         return await self.items.list_by_shopping_list(shopping_list_id)
+
+    async def get_summary(self, shopping_list_id: int, requesting_user_id: int) -> ShoppingListSummaryRead:
+        """Builds the authoritative active-purchase read model without per-item queries."""
+        shopping_list, member = await self._get_list_and_member(shopping_list_id, requesting_user_id)
+        if not self.policy.can_view(member):
+            raise ShoppingListAccessDenied(shopping_list_id)
+
+        list_with_branch = await self.lists.get_with_active_branch(shopping_list_id)
+        assert list_with_branch is not None
+        shopping_list, branch, store = list_with_branch
+        rows = await self.items.list_summary_rows(shopping_list_id, shopping_list.active_store_branch_id)
+
+        items: list[ShoppingListSummaryItem] = []
+        priced_subtotal = Decimal("0")
+        unpriced_items_count = 0
+        currency: str | None = None
+        for item, product, brand, store_product in rows:
+            pricing_status = self._summary_pricing_status(store_product)
+            unit_price: Decimal | None = None
+            subtotal: Decimal | None = None
+            if pricing_status is ProductComparisonStatus.AVAILABLE:
+                assert store_product is not None
+                unit_price = Decimal(str(store_product.current_price))
+                subtotal = unit_price * item.quantity
+                priced_subtotal += subtotal
+                currency = currency or store_product.currency
+            else:
+                unpriced_items_count += 1
+
+            items.append(
+                ShoppingListSummaryItem(
+                    shopping_list_item_id=item.id,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    version=item.version,
+                    name=product.canonical_name if product else "Producto desconocido",
+                    brand=brand.name if brand else None,
+                    presentation=product.presentation if product else None,
+                    image_url=product.image_url if product else None,
+                    store_product_id=store_product.id if store_product else None,
+                    current_price=Decimal(str(store_product.current_price)) if store_product else None,
+                    currency=store_product.currency if store_product else None,
+                    availability=store_product.availability if store_product else None,
+                    pricing_status=pricing_status,
+                    unit_price=unit_price,
+                    subtotal=subtotal,
+                )
+            )
+
+        if not items or unpriced_items_count == 0:
+            summary_status = ShoppingListSummaryPricingStatus.COMPLETE
+        elif priced_subtotal > 0:
+            summary_status = ShoppingListSummaryPricingStatus.PARTIAL
+        else:
+            summary_status = ShoppingListSummaryPricingStatus.UNAVAILABLE
+
+        return ShoppingListSummaryRead(
+            shopping_list_id=shopping_list.id,
+            active_store_branch_id=shopping_list.active_store_branch_id,
+            store_name=store.name if store else None,
+            branch_name=branch.name if branch else None,
+            distinct_products_count=len(items),
+            total_units_count=sum(item.quantity for item in items),
+            priced_subtotal=priced_subtotal if items and priced_subtotal > 0 else None,
+            currency=currency,
+            unpriced_items_count=unpriced_items_count,
+            pricing_status=summary_status,
+            items=items,
+        )
 
     async def add_item(
         self,
@@ -441,6 +518,19 @@ class ShoppingListService:
         if store_product is None:
             return None
         return store_product.current_price
+
+    @staticmethod
+    def _summary_pricing_status(store_product: StoreProduct | None) -> ProductComparisonStatus:
+        if store_product is None:
+            return ProductComparisonStatus.MISSING_PRODUCT
+        if store_product.current_price is None or store_product.current_price <= 0:
+            return ProductComparisonStatus.PRICE_UNAVAILABLE
+        if store_product.status is StoreProductStatus.INACTIVE or store_product.availability in {
+            Availability.OUT_OF_STOCK,
+            Availability.DISCONTINUED,
+        }:
+            return ProductComparisonStatus.UNAVAILABLE
+        return ProductComparisonStatus.AVAILABLE
 
     @staticmethod
     def _item_payload(item: ShoppingListItem) -> dict:

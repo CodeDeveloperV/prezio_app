@@ -41,6 +41,7 @@ from app.features.shopping_lists.schemas import (
     ShoppingListItemUpdate,
     ShoppingListMemberRead,
     ShoppingListRead,
+    ShoppingListSummaryRead,
 )
 from app.features.shopping_lists.service import ShoppingListService
 from app.features.pricing.repository import StoreProductRepository
@@ -103,6 +104,20 @@ async def get_shopping_list(
     except ShoppingListAccessDenied as exc:
         raise HTTPException(403, "You do not have access to this list") from exc
     return ShoppingListRead.model_validate(shopping_list)
+
+
+@router.get("/{shopping_list_id}/summary", response_model=ShoppingListSummaryRead)
+async def get_shopping_list_summary(
+    shopping_list_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ShoppingListService = Depends(get_shopping_list_service),
+) -> ShoppingListSummaryRead:
+    try:
+        return await service.get_summary(shopping_list_id, current_user.id)
+    except ShoppingListNotFound as exc:
+        raise HTTPException(404, "Shopping list not found") from exc
+    except ShoppingListAccessDenied as exc:
+        raise HTTPException(403, "You do not have access to this list") from exc
 
 
 @router.post("/{shopping_list_id}/archive", response_model=ShoppingListRead)

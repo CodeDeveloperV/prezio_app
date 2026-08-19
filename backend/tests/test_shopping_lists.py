@@ -9,7 +9,10 @@ from sqlalchemy.pool import StaticPool
 from app.core.db import get_db
 from app.core.redis import get_redis
 from app.features.catalog.models import Category, Product
+from app.features.pricing.enums import Availability
+from app.features.pricing.models import StoreProduct
 from app.features.shopping_lists.models import ShoppingListMember
+from app.features.stores.models import Store, StoreBranch
 from app.features.users.models import User
 from app.main import app
 from app.shared.models_base import Base
@@ -44,6 +47,78 @@ async def seed_product(async_client: AsyncClient) -> int:
         session.add(product)
         await session.commit()
         return product.id
+
+
+async def seed_named_product(async_client: AsyncClient, name: str, presentation: str = "1 unidad") -> int:
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        category = Category(name=f"Categoría {name}")
+        session.add(category)
+        await session.flush()
+        product = Product(canonical_name=name, category_id=category.id, presentation=presentation)
+        session.add(product)
+        await session.commit()
+        return product.id
+
+
+async def seed_branch(async_client: AsyncClient, *, store_name: str, branch_name: str) -> int:
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        store = Store(name=store_name, country="PA")
+        session.add(store)
+        await session.flush()
+        branch = StoreBranch(store_id=store.id, name=branch_name, city="Ciudad de Panamá")
+        session.add(branch)
+        await session.commit()
+        return branch.id
+
+
+async def seed_store_product(
+    async_client: AsyncClient,
+    *,
+    branch_id: int,
+    product_id: int,
+    price: str,
+    availability: Availability = Availability.IN_STOCK,
+) -> None:
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        session.add(
+            StoreProduct(
+                store_branch_id=branch_id,
+                product_id=product_id,
+                current_price=price,
+                availability=availability,
+            )
+        )
+        await session.commit()
+
+
+async def add_item(async_client: AsyncClient, token: str, shopping_list_id: int, product_id: int, quantity: int) -> dict:
+    response = await async_client.post(
+        f"/shopping-lists/{shopping_list_id}/items",
+        json={"product_id": product_id, "quantity": quantity},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+async def set_summary_branch(async_client: AsyncClient, token: str, shopping_list_id: int, branch_id: int | None) -> None:
+    response = await async_client.patch(
+        f"/shopping-lists/{shopping_list_id}/active-branch",
+        json={"store_branch_id": branch_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+
+
+async def get_purchase_summary(async_client: AsyncClient, token: str, shopping_list_id: int) -> dict:
+    response = await async_client.get(
+        f"/shopping-lists/{shopping_list_id}/summary", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    return response.json()
 
 
 async def create_list(async_client: AsyncClient, owner_token: str, name: str = "Compra semanal") -> int:
@@ -462,3 +537,114 @@ async def test_two_concurrent_users_editing_same_item_produce_conflict(async_cli
     status_codes = await asyncio.gather(submit(owner_token, 2), submit(editor_token, 3))
 
     assert sorted(status_codes) == [200, 409]
+
+
+async def test_purchase_summary_empty_list_is_complete_without_a_total(async_client: AsyncClient) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+
+    summary = await get_purchase_summary(async_client, token, shopping_list_id)
+
+    assert summary["items"] == []
+    assert summary["distinct_products_count"] == 0
+    assert summary["total_units_count"] == 0
+    assert summary["priced_subtotal"] is None
+    assert summary["unpriced_items_count"] == 0
+    assert summary["pricing_status"] == "complete"
+
+
+async def test_purchase_summary_calculates_branch_scoped_item_and_total_subtotals(async_client: AsyncClient) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+    branch_id = await seed_branch(async_client, store_name="Super 99", branch_name="Vía España")
+    milk_id = await seed_named_product(async_client, "Leche", "1 L")
+    rice_id = await seed_named_product(async_client, "Arroz", "1 kg")
+    await seed_store_product(async_client, branch_id=branch_id, product_id=milk_id, price="2.50")
+    await seed_store_product(async_client, branch_id=branch_id, product_id=rice_id, price="3.20")
+    await set_summary_branch(async_client, token, shopping_list_id, branch_id)
+    await add_item(async_client, token, shopping_list_id, milk_id, 2)
+    await add_item(async_client, token, shopping_list_id, rice_id, 3)
+
+    summary = await get_purchase_summary(async_client, token, shopping_list_id)
+    lines = {line["product_id"]: line for line in summary["items"]}
+
+    assert summary["store_name"] == "Super 99"
+    assert summary["branch_name"] == "Vía España"
+    assert summary["distinct_products_count"] == 2
+    assert summary["total_units_count"] == 5
+    assert summary["priced_subtotal"] == "14.60"
+    assert summary["pricing_status"] == "complete"
+    assert lines[milk_id]["unit_price"] == "2.50"
+    assert lines[milk_id]["subtotal"] == "5.00"
+    assert lines[rice_id]["subtotal"] == "9.60"
+
+
+async def test_purchase_summary_is_partial_when_a_product_is_not_listed_at_the_active_branch(
+    async_client: AsyncClient,
+) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+    active_branch = await seed_branch(async_client, store_name="Super 99", branch_name="Vía España")
+    other_branch = await seed_branch(async_client, store_name="Super 99", branch_name="El Dorado")
+    priced_product = await seed_named_product(async_client, "Pasta")
+    other_branch_only_product = await seed_named_product(async_client, "Salsa")
+    await seed_store_product(async_client, branch_id=active_branch, product_id=priced_product, price="1.50")
+    await seed_store_product(async_client, branch_id=other_branch, product_id=other_branch_only_product, price="99.99")
+    await set_summary_branch(async_client, token, shopping_list_id, active_branch)
+    await add_item(async_client, token, shopping_list_id, priced_product, 2)
+    await add_item(async_client, token, shopping_list_id, other_branch_only_product, 1)
+
+    summary = await get_purchase_summary(async_client, token, shopping_list_id)
+    lines = {line["product_id"]: line for line in summary["items"]}
+
+    assert summary["priced_subtotal"] == "3.00"
+    assert summary["unpriced_items_count"] == 1
+    assert summary["pricing_status"] == "partial"
+    assert lines[other_branch_only_product]["pricing_status"] == "missing_product"
+    assert lines[other_branch_only_product]["unit_price"] is None
+    assert lines[other_branch_only_product]["subtotal"] is None
+    assert lines[other_branch_only_product]["store_product_id"] is None
+
+
+async def test_purchase_summary_is_unavailable_for_invalid_or_unavailable_branch_prices(async_client: AsyncClient) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+    branch_id = await seed_branch(async_client, store_name="Rey", branch_name="Obarrio")
+    invalid_price_product = await seed_named_product(async_client, "Producto sin precio")
+    unavailable_product = await seed_named_product(async_client, "Producto agotado")
+    await seed_store_product(async_client, branch_id=branch_id, product_id=invalid_price_product, price="0.00")
+    await seed_store_product(
+        async_client,
+        branch_id=branch_id,
+        product_id=unavailable_product,
+        price="4.00",
+        availability=Availability.OUT_OF_STOCK,
+    )
+    await set_summary_branch(async_client, token, shopping_list_id, branch_id)
+    await add_item(async_client, token, shopping_list_id, invalid_price_product, 1)
+    await add_item(async_client, token, shopping_list_id, unavailable_product, 2)
+
+    summary = await get_purchase_summary(async_client, token, shopping_list_id)
+    lines = {line["product_id"]: line for line in summary["items"]}
+
+    assert summary["priced_subtotal"] is None
+    assert summary["unpriced_items_count"] == 2
+    assert summary["pricing_status"] == "unavailable"
+    assert lines[invalid_price_product]["pricing_status"] == "price_unavailable"
+    assert lines[unavailable_product]["pricing_status"] == "unavailable"
+
+
+async def test_purchase_summary_uses_product_identity_without_requiring_a_barcode(async_client: AsyncClient) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+    branch_id = await seed_branch(async_client, store_name="Xtra", branch_name="24 de Diciembre")
+    product_id = await seed_named_product(async_client, "Producto sin código")
+    await seed_store_product(async_client, branch_id=branch_id, product_id=product_id, price="7.25")
+    await set_summary_branch(async_client, token, shopping_list_id, branch_id)
+    await add_item(async_client, token, shopping_list_id, product_id, 1)
+
+    summary = await get_purchase_summary(async_client, token, shopping_list_id)
+
+    assert summary["pricing_status"] == "complete"
+    assert summary["items"][0]["product_id"] == product_id
+    assert summary["items"][0]["subtotal"] == "7.25"

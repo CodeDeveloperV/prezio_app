@@ -10,6 +10,7 @@ import type {
   ShoppingListItemCreate,
   ShoppingListItemUpdate,
   ShoppingListMember,
+  ShoppingListSummary,
 } from '@prezio/shared-types';
 
 export function listShoppingLists(): Promise<ShoppingList[]> {
@@ -51,6 +52,11 @@ export function removeShoppingListMember(shoppingListId: number, userId: number)
 
 export function listShoppingListItems(shoppingListId: number): Promise<ShoppingListItem[]> {
   return httpClient.get(`shopping-lists/${shoppingListId}/items`).json<ShoppingListItem[]>();
+}
+
+/** Authoritative branch-scoped purchase read model. Never compose totals from the local cache. */
+export function getShoppingListSummary(shoppingListId: number): Promise<ShoppingListSummary> {
+  return httpClient.get(`shopping-lists/${shoppingListId}/summary`).json<ShoppingListSummary>();
 }
 
 export function addShoppingListItem(

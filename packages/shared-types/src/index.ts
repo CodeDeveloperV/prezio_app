@@ -425,6 +425,48 @@ export interface ShoppingListItemConflictResponse {
   item: ShoppingListItem;
 }
 
+// GET /shopping-lists/{id}/summary is a branch-scoped read model for the active-purchase UI.
+// It deliberately stays separate from ShoppingListItem, which is the operational mutation DTO.
+export type ShoppingListSummaryItemPricingStatus =
+  | 'available'
+  | 'missing_product'
+  | 'price_unavailable'
+  | 'unavailable';
+
+export type ShoppingListSummaryPricingStatus = 'complete' | 'partial' | 'unavailable';
+
+export interface ShoppingListSummaryItem {
+  shopping_list_item_id: number;
+  product_id: number;
+  quantity: number;
+  version: number;
+  name: string;
+  brand: string | null;
+  presentation: string | null;
+  image_url: string | null;
+  store_product_id: number | null;
+  current_price: string | null;
+  currency: string | null;
+  availability: Availability | null;
+  pricing_status: ShoppingListSummaryItemPricingStatus;
+  unit_price: string | null;
+  subtotal: string | null;
+}
+
+export interface ShoppingListSummary {
+  shopping_list_id: number;
+  active_store_branch_id: number | null;
+  store_name: string | null;
+  branch_name: string | null;
+  distinct_products_count: number;
+  total_units_count: number;
+  priced_subtotal: string | null;
+  currency: string | null;
+  unpriced_items_count: number;
+  pricing_status: ShoppingListSummaryPricingStatus;
+  items: ShoppingListSummaryItem[];
+}
+
 export interface ShoppingListMember {
   id: number;
   shopping_list_id: number;

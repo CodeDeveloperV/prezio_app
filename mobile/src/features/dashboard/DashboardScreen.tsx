@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { ShoppingList, ShoppingListItem } from '@prezio/shared-types';
+import type { ShoppingList } from '@prezio/shared-types';
 
 import { MainTabParamList } from '../../app/navigation/types';
 import { DEFAULT_ICON_STROKE_WIDTH, IconChartBar, IconChevronRight } from '../../app/theme/icons';
@@ -20,7 +20,7 @@ import { MostPurchasedList } from './components/MostPurchasedList';
 import { SpendTrendChart } from './components/SpendTrendChart';
 import { listStores } from '../stores/api/storesApi';
 import { useStoreBranchQuery } from '../stores/hooks/useStores';
-import { listShoppingListItems, listShoppingLists } from '../shopping-lists/api/shoppingListsApi';
+import { getShoppingListSummary, listShoppingLists } from '../shopping-lists/api/shoppingListsApi';
 import { selectActiveShoppingList } from '../shopping-lists/utils/selectActiveShoppingList';
 import { useDashboardQuery } from './hooks/useDashboardQuery';
 import { formatMoney } from './utils/format';
@@ -40,10 +40,9 @@ export function DashboardScreen() {
   });
 
   const activeShoppingList = selectActiveShoppingList(shoppingListsQuery.data);
-
-  const activeShoppingListItemsQuery = useQuery<ShoppingListItem[], Error>({
-    queryKey: ['shoppingLists', activeShoppingList?.id, 'items'],
-    queryFn: () => listShoppingListItems(activeShoppingList!.id),
+  const activePurchaseSummaryQuery = useQuery({
+    queryKey: ['shoppingLists', activeShoppingList?.id, 'summary'],
+    queryFn: () => getShoppingListSummary(activeShoppingList!.id),
     enabled: activeShoppingList !== null,
   });
 
@@ -52,20 +51,17 @@ export function DashboardScreen() {
     ? `${activeBranchQuery.data.store_name} - ${activeBranchQuery.data.name}`
     : null;
 
-  const scannedItems = activeShoppingListItemsQuery.data?.filter(
-    (item) => item.checked && item.price_at_check !== null,
-  );
-  const activeSessionTotal = (scannedItems ?? []).reduce(
-    (total, item) => total + Number(item.price_at_check) * item.quantity,
-    0,
-  );
-  let activeSessionStatus: string | null = null;
-  if (activeShoppingList !== null && !activeShoppingListItemsQuery.isPending) {
-    activeSessionStatus =
-      scannedItems && scannedItems.length > 0
-        ? `${scannedItems.length} ${scannedItems.length === 1 ? 'producto escaneado' : 'productos escaneados'}`
-        : 'Aún no has agregado ni escaneado productos.';
-  }
+  const activePurchaseSummary = activePurchaseSummaryQuery.data;
+  const activeSessionTotal = activePurchaseSummary?.priced_subtotal
+    ? formatMoney(activePurchaseSummary.priced_subtotal)
+    : '$0.00';
+  const activeSessionStatus = activePurchaseSummary
+    ? activePurchaseSummary.pricing_status === 'partial'
+      ? `Subtotal conocido · ${activePurchaseSummary.unpriced_items_count} producto${activePurchaseSummary.unpriced_items_count === 1 ? '' : 's'} sin precio.`
+      : `${activePurchaseSummary.total_units_count} producto${activePurchaseSummary.total_units_count === 1 ? '' : 's'} en tu compra.`
+    : activeShoppingList
+      ? 'Revisa y continúa tu compra activa.'
+      : null;
 
   const greetingName = user?.email?.split('@')[0] ?? 'de nuevo';
 
@@ -79,10 +75,9 @@ export function DashboardScreen() {
     setTimeout(() => {
       if (activeShoppingList) {
         navigation.navigate('NewPurchase', {
-          screen: 'Scan',
+          screen: 'PurchaseSummary',
           params: {
-            storeBranchId: activeShoppingList.active_store_branch_id ?? undefined,
-            scanFlow: 'purchase',
+            shoppingListId: activeShoppingList.id,
           },
         });
       } else {
@@ -111,7 +106,7 @@ export function DashboardScreen() {
       <HeroCard
         hasActiveSession={activeShoppingList !== null}
         activeSessionBranchLabel={activeBranchLabel}
-        activeSessionTotal={activeShoppingList !== null ? formatMoney(activeSessionTotal) : null}
+        activeSessionTotal={activeShoppingList !== null ? activeSessionTotal : null}
         activeSessionStatus={activeSessionStatus}
         isPrimaryActionLoading={isOpeningNewPurchase}
         onPressPrimaryAction={handlePrimaryAction}

@@ -34,6 +34,7 @@ export type ComparisonStackParamList = {
 // a branch context, then resolve a barcode to an existing product or fall through to
 // disambiguation/creation.
 export type ShoppingSessionStackParamList = {
+  PurchaseSummary: { shoppingListId: number };
   BranchSelect: { pendingScan?: ScanResultProductContext } | undefined;
   Scan: {
     storeBranchId?: number;

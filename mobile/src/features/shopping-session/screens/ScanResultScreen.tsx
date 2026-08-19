@@ -137,6 +137,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
     onSuccess: () => {
       setAddedToActiveList(true);
       queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+      queryClient.invalidateQueries({ queryKey: ['shoppingLists', activeShoppingList?.id, 'summary'] });
     },
   });
 
