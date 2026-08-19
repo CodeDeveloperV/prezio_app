@@ -14,6 +14,7 @@ export { default as IconBolt } from '@tabler/icons-react-native/IconBolt';
 export { default as IconBoltOff } from '@tabler/icons-react-native/IconBoltOff';
 export { default as IconShoppingCart } from '@tabler/icons-react-native/IconShoppingCart';
 export { default as IconWallet } from '@tabler/icons-react-native/IconWallet';
+export { default as IconCoin } from '@tabler/icons-react-native/IconCoin';
 export { default as IconUser } from '@tabler/icons-react-native/IconUser';
 export { default as IconHome2 } from '@tabler/icons-react-native/IconHome2';
 export { default as IconHistory } from '@tabler/icons-react-native/IconHistory';

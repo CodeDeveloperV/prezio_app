@@ -91,6 +91,7 @@ test('renders an authoritative complete purchase summary with branch-scoped tota
 
   expect(content).toContain('Mi compra');
   expect(content).toContain('Super 99 · Vía España');
+  expect(content).toContain('Productos');
   expect(content).toContain('Total estimado');
   expect(content).toContain('$7.90');
   expect(content).toContain('Nutella');
@@ -106,6 +107,16 @@ test('renders the empty state and opens the immersive scanner on demand', () => 
   expect(content).toContain('Escanea tu primer producto para comenzar.');
   press(renderer, 'Escanear producto');
   expect(navigation.navigate).toHaveBeenCalledWith('Scan', { storeBranchId: 7, scanFlow: 'purchase' });
+});
+
+test('keeps the purchase actions compact without the unavailable-close copy', () => {
+  const renderer = renderScreen();
+  const content = renderedText(renderer);
+
+  expect(content).toContain('Escanear producto');
+  expect(content).not.toContain('Agregar');
+  expect(content).toContain('Finalizar compra');
+  expect(content).not.toContain('El cierre de compra estará disponible próximamente.');
 });
 
 test('labels partial totals honestly and keeps products without a price visible', () => {

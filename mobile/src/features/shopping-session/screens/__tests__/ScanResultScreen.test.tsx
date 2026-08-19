@@ -79,10 +79,34 @@ test('uses only the active purchase branch price and treats another branch as mi
   });
   const content = JSON.stringify(renderer.toJSON());
 
-  expect(content).toContain(
-    'Aún no tenemos precio para este producto en esta sucursal',
-  );
+  expect(content).toContain('Aún no tenemos precio para este producto');
+  expect(content).toContain('Ayuda a mantener Prezio actualizado en esta sucursal.');
   expect(content).not.toContain('1.85');
+});
+
+test('captures a missing price as integer cents', () => {
+  const renderer = render({
+    storeBranchId: 7,
+    scanFlow: 'purchase',
+    barcodeId: 99,
+    product,
+  });
+  const getPriceInput = () =>
+    renderer.root.findByProps({
+      accessibilityLabel: 'Precio actual en balboas',
+    });
+
+  expect(getPriceInput().props.value).toBe('0.00');
+
+  ReactTestRenderer.act(() => {
+    getPriceInput().props.onChangeText('0.002');
+  });
+  expect(getPriceInput().props.value).toBe('0.02');
+
+  ReactTestRenderer.act(() => {
+    getPriceInput().props.onChangeText('0.025');
+  });
+  expect(getPriceInput().props.value).toBe('0.25');
 });
 
 test('shows the price-verification decision for a price at the active branch', () => {

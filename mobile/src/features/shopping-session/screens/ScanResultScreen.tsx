@@ -8,7 +8,9 @@ import { Button, Card, Input, Text, XStack, YStack } from 'tamagui';
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
+  IconAlertTriangle,
   IconCheck,
+  IconCoin,
   IconEdit,
   IconHistory,
   IconMinus,
@@ -83,8 +85,65 @@ function money(value: number | string) {
 }
 
 function validPrice(value: string) {
-  const normalized = value.trim().replace(',', '.');
-  return /^\d+(\.\d{1,2})?$/.test(normalized) && Number(normalized) > 0;
+  return Number(value) > 0;
+}
+
+/** Currency mask backed by integer cents: typing `2`, then `5` becomes 0.02, then 0.25. */
+function formatCents(cents: number) {
+  const normalized = Math.max(0, Math.trunc(cents));
+  return `${Math.floor(normalized / 100)}.${String(normalized % 100).padStart(2, '0')}`;
+}
+
+function priceToCents(value: number | string) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.round(numeric * 100) : 0;
+}
+
+function MonetaryPriceInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <XStack
+      alignItems="center"
+      minHeight={64}
+      borderWidth={1}
+      borderColor="$borderColor"
+      borderRadius="$4"
+      backgroundColor="$background"
+      paddingHorizontal="$3"
+      gap="$2"
+    >
+      <YStack
+        width={36}
+        height={36}
+        borderRadius="$full"
+        backgroundColor="rgba(34, 197, 94, 0.10)"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <IconCoin color={colorTokens.primaryText} size={19} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+      </YStack>
+      <Text fontFamily="$heading" fontSize="$lg" color="$color">
+        B/.
+      </Text>
+      <Input
+        unstyled
+        flex={1}
+        keyboardType="decimal-pad"
+        value={value}
+        onChangeText={(nextValue) => onChange(formatCents(Number(nextValue.replace(/\D/g, '')) || 0))}
+        fontFamily="$heading"
+        fontSize="$xl"
+        color="$color"
+        textAlign="right"
+        accessibilityLabel="Precio actual en balboas"
+      />
+    </XStack>
+  );
 }
 
 function QuantitySelector({
@@ -161,7 +220,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
   );
   const [quantity, setQuantity] = useState(1);
   const [priceInput, setPriceInput] = useState(
-    initialStoreProduct ? String(initialStoreProduct.current_price) : '',
+    formatCents(priceToCents(initialStoreProduct?.current_price ?? 0)),
   );
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -182,7 +241,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
     mutationFn: createProductCorrection,
   });
   const unitPrice =
-    storeProductState?.current_price ?? Number(priceInput.replace(',', '.'));
+    storeProductState?.current_price ?? Number(priceInput);
 
   useEffect(() => {
     if (step !== 'success') return undefined;
@@ -248,7 +307,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
       const updated = await updatePrice.mutateAsync({
         storeProductId: storeProductState.id,
         request: {
-          price: Number(priceInput.replace(',', '.')),
+          price: Number(priceInput),
           version: storeProductState.version,
         },
       });
@@ -268,7 +327,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
           current_price: Number(conflict.current_price),
           version: conflict.version,
         });
-        setPriceInput(String(conflict.current_price));
+        setPriceInput(formatCents(priceToCents(conflict.current_price)));
         setError(
           'El precio cambió mientras lo actualizabas. Mostramos el precio más reciente; puedes editarlo y volver a actualizar.',
         );
@@ -289,7 +348,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
       const created = await createStoreProduct.mutateAsync({
         product_id: product.id,
         store_branch_id: storeBranchId,
-        current_price: Number(priceInput.replace(',', '.')),
+        current_price: Number(priceInput),
       });
       setStoreProductState(created);
       setStep('quantity');
@@ -467,7 +526,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
                     disabled={fromCache}
                     onPress={() => {
                       setError(null);
-                      setPriceInput(String(storeProductState.current_price));
+                      setPriceInput(formatCents(priceToCents(storeProductState.current_price)));
                       setStep('update');
                     }}
                     icon={
@@ -525,26 +584,42 @@ export function ScanResultScreen({ route, navigation }: Props) {
               <YStack gap="$4">
                 <Card
                   elevation={1}
-                  backgroundColor="rgba(245, 158, 11, 0.10)"
+                  backgroundColor="#FEF3C7"
+                  borderWidth={1}
+                  borderColor="rgba(245, 158, 11, 0.34)"
                   borderRadius="$4"
                   padding="$4"
                 >
-                  <Text fontFamily="$body" fontSize="$sm" color="$color">
-                    Aún no tenemos precio para este producto en esta sucursal.
-                    Ayuda a mantener Prezio actualizado.
-                  </Text>
+                  <XStack alignItems="flex-start" gap="$3">
+                    <YStack
+                      width={36}
+                      height={36}
+                      borderRadius="$full"
+                      backgroundColor="rgba(245, 158, 11, 0.18)"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <IconAlertTriangle
+                        color={colorTokens.warning}
+                        size={20}
+                        strokeWidth={DEFAULT_ICON_STROKE_WIDTH}
+                      />
+                    </YStack>
+                    <YStack flex={1} gap="$1">
+                      <Text fontFamily="$heading" fontSize="$sm" color="$color">
+                        Aún no tenemos precio para este producto
+                      </Text>
+                      <Text fontFamily="$body" fontSize="$sm" color="$colorSecondary">
+                        Ayuda a mantener Prezio actualizado en esta sucursal.
+                      </Text>
+                    </YStack>
+                  </XStack>
                 </Card>
                 <YStack gap="$2">
                   <Text fontFamily="$heading" fontSize="$sm" color="$color">
                     Precio actual *
                   </Text>
-                  <Input
-                    keyboardType="decimal-pad"
-                    value={priceInput}
-                    onChangeText={setPriceInput}
-                    placeholder="B/. 0.00"
-                    fontSize="$lg"
-                  />
+                  <MonetaryPriceInput value={priceInput} onChange={setPriceInput} />
                 </YStack>
                 <Button
                   backgroundColor="$primary"
@@ -577,13 +652,7 @@ export function ScanResultScreen({ route, navigation }: Props) {
                   <Text fontFamily="$heading" fontSize="$sm" color="$color">
                     Nuevo precio *
                   </Text>
-                  <Input
-                    keyboardType="decimal-pad"
-                    value={priceInput}
-                    onChangeText={setPriceInput}
-                    placeholder="B/. 0.00"
-                    fontSize="$lg"
-                  />
+                  <MonetaryPriceInput value={priceInput} onChange={setPriceInput} />
                 </YStack>
                 <YStack gap="$2">
                   <Text fontFamily="$heading" fontSize="$sm" color="$color">

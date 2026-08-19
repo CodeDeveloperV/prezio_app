@@ -10,6 +10,7 @@ import type { ShoppingListSummaryItem } from '@prezio/shared-types';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 import {
   DEFAULT_ICON_STROKE_WIDTH,
+  IconAlertTriangle,
   IconMinus,
   IconPlus,
   IconScan,
@@ -23,7 +24,7 @@ import { showPurchaseSummaryError } from '../purchaseSummaryToast';
 type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'PurchaseSummary'>;
 
 const styles = StyleSheet.create({
-  listContent: { padding: 16, paddingBottom: 188, gap: 12 },
+  listContent: { padding: 16, paddingBottom: 132, gap: 12 },
   image: { width: 52, height: 52, borderRadius: 12 },
   placeholder: { width: 52, height: 52, borderRadius: 12 },
   quantityButton: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(34, 197, 94, 0.10)' },
@@ -46,7 +47,7 @@ function PurchaseItemRow({
   const hasPrice = item.pricing_status === 'available' && item.unit_price !== null;
   const canDecrease = item.quantity > 1 && !isUpdating;
   return (
-    <Card elevation={1} backgroundColor="$surface" borderRadius="$4" paddingHorizontal="$3" paddingVertical="$2">
+    <Card elevation={2} backgroundColor="$background" borderRadius="$4" paddingHorizontal="$3" paddingVertical="$2">
       <XStack gap="$3" alignItems="center">
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.image} resizeMode="contain" />
@@ -69,9 +70,12 @@ function PurchaseItemRow({
               {formatMoney(item.unit_price)} c/u
             </Text>
           ) : (
-            <Text fontFamily="$body" fontSize="$xs" color="$danger">
-              Precio no disponible
-            </Text>
+            <XStack alignItems="center" gap="$1">
+              <IconAlertTriangle color={colorTokens.warning} size={14} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+              <Text fontFamily="$body" fontSize="$xs" color="$danger">
+                Precio no disponible
+              </Text>
+            </XStack>
           )}
         </YStack>
         <YStack alignItems="flex-end" alignSelf="stretch" justifyContent="space-between" gap="$1">
@@ -177,27 +181,30 @@ export function PurchaseSummaryScreen({ route, navigation }: Props) {
         ListHeaderComponent={
           <YStack gap="$3">
             <FlowHeader title="Mi compra" subtitle={branchLabel} onBack={() => navigation.goBack()} />
-            <Card elevation={2} backgroundColor="$surface" borderRadius="$4" padding="$4">
-              <XStack alignItems="center" justifyContent="space-between" gap="$4">
-                <YStack gap="$0.5">
-                  <Text fontFamily="$heading" fontSize="$md">{summary.total_units_count} productos</Text>
-                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                    {summary.distinct_products_count} {summary.distinct_products_count === 1 ? 'producto diferente' : 'productos diferentes'}
+            <YStack gap="$2">
+              <XStack gap="$3">
+                <Card flex={1} elevation={2} backgroundColor="$background" borderRadius="$4" padding="$2" minHeight={84} alignItems="center" justifyContent="center" gap="$1">
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">Productos</Text>
+                  <Text fontFamily="$heading" fontSize="$xl" color="$color" textAlign="center">
+                    {summary.total_units_count}
                   </Text>
-                </YStack>
-                <YStack alignItems="flex-end" gap="$0.5">
-                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">{totalLabel}</Text>
-                  <Text fontFamily="$heading" fontSize="$xl" color="$primary">
+                </Card>
+                <Card flex={1} elevation={2} backgroundColor="$background" borderRadius="$4" padding="$2" minHeight={84} alignItems="center" justifyContent="center" gap="$1">
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">{totalLabel}</Text>
+                  <Text fontFamily="$heading" fontSize="$xl" color="$primary" textAlign="center">
                     {summary.priced_subtotal ? formatMoney(summary.priced_subtotal) : '—'}
                   </Text>
-                </YStack>
+                </Card>
               </XStack>
               {summary.unpriced_items_count > 0 ? (
-                <Text marginTop="$3" fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-                  {summary.unpriced_items_count} {summary.unpriced_items_count === 1 ? 'producto sin precio disponible' : 'productos sin precio disponible'}
-                </Text>
+                <XStack alignItems="center" gap="$2.5" paddingHorizontal="$1">
+                  <IconAlertTriangle color={colorTokens.warning} size={15} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                  <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+                    {summary.unpriced_items_count} {summary.unpriced_items_count === 1 ? 'producto sin precio disponible' : 'productos sin precio disponible'}
+                  </Text>
+                </XStack>
               ) : null}
-            </Card>
+            </YStack>
             {isEmpty ? (
               <YStack alignItems="center" paddingVertical="$8" gap="$2">
                 <YStack width={56} height={56} borderRadius="$full" backgroundColor="rgba(34, 197, 94, 0.12)" alignItems="center" justifyContent="center">
@@ -213,26 +220,19 @@ export function PurchaseSummaryScreen({ route, navigation }: Props) {
         }
         ListEmptyComponent={null}
       />
-      <YStack backgroundColor="$background" paddingHorizontal="$4" paddingTop="$3" paddingBottom="$4" gap="$2" borderTopWidth={1} borderColor="$borderColor">
+      <YStack backgroundColor="$background" paddingHorizontal="$4" paddingTop="$3" paddingBottom="$3" gap="$2" borderTopWidth={1} borderColor="$borderColor">
         <Button
           backgroundColor="$primary"
           color="$white"
           icon={<IconScan color={colorTokens.white} size={19} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />}
           minHeight={52}
-          paddingVertical="$3"
           onPress={openScanner}
         >
           Escanear producto
         </Button>
-        <Button backgroundColor="$surface" minHeight={48} paddingVertical="$3" onPress={openScanner}>Agregar manualmente</Button>
         {!isEmpty ? (
-          <>
-            {/* TODO: enable when the backend exposes a real purchase-finalization operation. */}
-            <Button backgroundColor="$surface" minHeight={48} paddingVertical="$3" disabled>Finalizar compra</Button>
-            <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary" textAlign="center">
-              El cierre de compra estará disponible próximamente.
-            </Text>
-          </>
+          /* TODO: enable when the backend exposes a real purchase-finalization operation. */
+          <Button backgroundColor="$surface" minHeight={48} disabled>Finalizar compra</Button>
         ) : null}
       </YStack>
     </YStack>
