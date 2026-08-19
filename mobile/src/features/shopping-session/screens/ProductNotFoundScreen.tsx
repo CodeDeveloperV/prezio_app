@@ -22,16 +22,20 @@ type Props = NativeStackScreenProps<ShoppingSessionStackParamList, 'ProductNotFo
 
 function Benefit({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
   return (
-    <YStack flex={1} minWidth={144} gap="$1.5" backgroundColor="$surface" borderRadius="$4" padding="$3">
-      <XStack alignItems="center" gap="$2">
-        {icon}
-        <Text fontFamily="$heading" fontSize="$xs" color="$color" flex={1}>
-          {title}
-        </Text>
+    <YStack flex={1} minWidth={144} backgroundColor="$surface" borderRadius="$4" padding="$3">
+      <XStack alignItems="flex-start" gap="$2">
+        <YStack width={16} paddingTop="$0.5">
+          {icon}
+        </YStack>
+        <YStack flex={1} gap="$1.5">
+          <Text fontFamily="$heading" fontSize="$xs" color="$color">
+            {title}
+          </Text>
+          <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
+            {description}
+          </Text>
+        </YStack>
       </XStack>
-      <Text fontFamily="$body" fontSize="$xs" color="$colorSecondary">
-        {description}
-      </Text>
     </YStack>
   );
 }
@@ -44,7 +48,7 @@ export function ProductNotFoundScreen({ route, navigation }: Props) {
     <ScreenContainer scroll={false}>
       <FlowHeader title="" onBack={() => navigation.replace('Scan', scannerParams)} />
 
-      <YStack flex={1} justifyContent="space-between" paddingHorizontal="$4" paddingBottom="$4">
+      <YStack flex={1} justifyContent="space-between" paddingBottom="$2">
         <YStack alignItems="center" gap="$3" marginTop="$2">
           <Image source={productNotFoundImage} style={styles.illustration} resizeMode="contain" />
           <YStack gap="$1" alignItems="center">
@@ -81,7 +85,7 @@ export function ProductNotFoundScreen({ route, navigation }: Props) {
           </XStack>
         </YStack>
 
-        <YStack gap="$3">
+        <YStack gap="$3" marginTop="$8">
           <Button
             minHeight={56}
             backgroundColor="$primary"

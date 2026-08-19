@@ -153,11 +153,17 @@ export function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const passwordInputRef = useRef<TextInput>(null);
+  const isAuthRequestInFlight = useRef(false);
 
   const loginMutation = useLoginMutation();
   const googleLoginMutation = useGoogleLoginMutation();
 
   const handleLogin = () => {
+    if (isAuthRequestInFlight.current || loginMutation.isPending || googleLoginMutation.isPending) {
+      return;
+    }
+
+    isAuthRequestInFlight.current = true;
     loginMutation.mutate(
       { email, password },
       {
@@ -166,11 +172,19 @@ export function LoginScreen({ navigation }: Props) {
             title: 'No pudimos iniciar sesión',
             message: 'Revisa tus datos e intenta de nuevo.',
           }),
+        onSettled: () => {
+          isAuthRequestInFlight.current = false;
+        },
       },
     );
   };
 
   const handleGoogleLogin = async () => {
+    if (isAuthRequestInFlight.current || loginMutation.isPending || googleLoginMutation.isPending) {
+      return;
+    }
+
+    isAuthRequestInFlight.current = true;
     try {
       const idToken = await signInWithGoogle();
       googleLoginMutation.mutate(idToken, {
@@ -179,8 +193,12 @@ export function LoginScreen({ navigation }: Props) {
             title: 'No pudimos continuar con Google',
             message: 'Intenta de nuevo en unos segundos.',
           }),
+        onSettled: () => {
+          isAuthRequestInFlight.current = false;
+        },
       });
     } catch {
+      isAuthRequestInFlight.current = false;
       showAuthErrorToast({
         title: 'No pudimos continuar con Google',
         message: 'Revisa tu conexión e intenta de nuevo.',

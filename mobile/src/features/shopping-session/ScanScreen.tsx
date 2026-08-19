@@ -683,7 +683,7 @@ export function ScanScreen({ route, navigation }: Props) {
           return;
         }
 
-        navigation.replace('CreateProduct', {
+        navigation.replace('ProductNotFound', {
           storeBranchId: routeStoreBranchId ?? undefined,
           scanFlow,
           barcode,

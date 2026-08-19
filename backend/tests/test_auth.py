@@ -63,6 +63,23 @@ async def test_login_with_unknown_email_fails(async_client: AsyncClient) -> None
     assert response.status_code == 401
 
 
+async def test_login_with_inactive_user_fails(async_client: AsyncClient) -> None:
+    await async_client.post("/auth/register", json=REGISTER_PAYLOAD)
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+
+    from app.features.users.repository import UserRepository
+
+    async with session_factory() as session:
+        user = await UserRepository(session).get_by_email(REGISTER_PAYLOAD["email"])
+        assert user is not None
+        user.is_active = False
+        await session.commit()
+
+    response = await async_client.post("/auth/login", json=REGISTER_PAYLOAD)
+
+    assert response.status_code == 401
+
+
 async def test_protected_endpoint_requires_access_token(async_client: AsyncClient) -> None:
     response = await async_client.get("/users/me")
 

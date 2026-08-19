@@ -42,7 +42,7 @@ class AuthService:
 
     async def login(self, email: str, password: str) -> TokenResponse:
         user = await self.users.get_by_email(email)
-        if user is None or user.hashed_password is None or not verify_password(
+        if user is None or not user.is_active or user.hashed_password is None or not verify_password(
             password, user.hashed_password
         ):
             raise InvalidCredentials()
