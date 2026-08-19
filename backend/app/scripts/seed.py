@@ -9,7 +9,11 @@ from sqlalchemy import select
 
 from app.core.db import AsyncSessionLocal
 from app.features.catalog.models import Category
+from app.features.pricing.models import TaxRate
 from app.features.stores.models import Store, StoreBranch
+# Register the complete SQLAlchemy model graph before instantiating Store.  Some relationships
+# (for example PriceHistory.updated_by_user) refer to models outside the narrow seed imports.
+import app.shared.all_models  # noqa: F401
 
 PANAMA_CHAINS = [
     ("Supermercados Rey", "Vía España, Ciudad de Panamá"),
@@ -41,6 +45,14 @@ CATEGORY_TAXONOMY = {
     "Farmacia": ["Medicamentos de Venta Libre", "Vitaminas y Suplementos"],
 }
 
+# ITBMS rates verified against the DGI. Exempt products are represented by no tax_rate_id,
+# rather than a fake 0% tax row, so the system can distinguish exempt from taxed at zero.
+PANAMA_TAX_RATES = [
+    ("ITBMS_7", "ITBMS 7%", "0.0700"),
+    ("ITBMS_ALCOHOL_10", "ITBMS bebidas alcohólicas 10%", "0.1000"),
+    ("ITBMS_TOBACCO_15", "ITBMS derivados del tabaco 15%", "0.1500"),
+]
+
 
 async def seed() -> None:
     async with AsyncSessionLocal() as session:
@@ -55,6 +67,17 @@ async def seed() -> None:
 
         await session.commit()
     print(f"Seeded {len(PANAMA_CHAINS)} stores with one branch each.")
+
+    async with AsyncSessionLocal() as session:
+        existing = await session.execute(select(TaxRate.id).where(TaxRate.country == "PA").limit(1))
+        if existing.scalar_one_or_none() is None:
+            session.add_all(
+                [TaxRate(country="PA", code=code, name=name, rate=rate) for code, name, rate in PANAMA_TAX_RATES]
+            )
+            await session.commit()
+            print(f"Seeded {len(PANAMA_TAX_RATES)} Panama tax rates.")
+        else:
+            print("Panama tax rates already seeded, skipping.")
 
     async with AsyncSessionLocal() as session:
         existing = await session.execute(select(Category.id).limit(1))

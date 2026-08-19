@@ -18,6 +18,7 @@ from app.features.catalog.schemas import (
     ScanProductDetails,
 )
 from app.features.pricing.schemas import StoreProductRead
+from app.features.pricing.tax_repository import TaxRateRepository
 from app.features.stores.exceptions import StoreBranchNotFound
 from app.features.stores.repository import StoreBranchRepository
 from app.shared.enums import ModerationStatus
@@ -40,11 +41,13 @@ class ProductRecognitionService:
         barcodes: ProductBarcodeRepository,
         store_branches: StoreBranchRepository,
         brands: BrandRepository,
+        tax_rates: TaxRateRepository,
     ) -> None:
         self.engine = engine
         self.barcodes = barcodes
         self.store_branches = store_branches
         self.brands = brands
+        self.tax_rates = tax_rates
 
     async def scan(
         self, request: ScanBarcodeRequest
@@ -204,6 +207,19 @@ class ProductRecognitionService:
         )
 
     async def create_product_from_scan(self, request: CreateProductRequest, created_by: int) -> Product:
+        store_id = request.store_id
+        country = request.country
+        if request.store_branch_id is not None:
+            branch = await self.store_branches.get_by_id(request.store_branch_id)
+            if branch is None:
+                raise StoreBranchNotFound(request.store_branch_id)
+            await self.engine.db.refresh(branch, ["store"])
+            store_id = branch.store_id
+            country = branch.store.country
+            if request.tax_rate_id is not None:
+                tax_rate = await self.tax_rates.get_by_id(request.tax_rate_id)
+                if tax_rate is None or not tax_rate.is_active or tax_rate.country != country:
+                    raise ValueError("tax_rate_id is not active for this store's country")
         return await self.engine.create_new_product(
             canonical_name=request.canonical_name,
             brand_id=request.brand_id,
@@ -213,8 +229,11 @@ class ProductRecognitionService:
             image_url=request.image_url,
             barcode=request.barcode,
             barcode_type=request.barcode_type,
-            store_id=request.store_id,
-            country=request.country,
+            store_id=store_id,
+            country=country,
+            store_branch_id=request.store_branch_id,
+            initial_price=request.initial_price,
+            tax_rate_id=request.tax_rate_id,
             created_by=created_by,
         )
 

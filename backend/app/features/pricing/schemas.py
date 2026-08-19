@@ -12,11 +12,20 @@ class StoreProductRead(ORMModel):
     store_branch_id: int
     product_id: int
     current_price: Decimal
+    tax_rate_id: int | None
     currency: str
     version: int
     availability: Availability
     last_verified_at: datetime | None
     last_verified_by: int | None
+
+
+class TaxRateRead(ORMModel):
+    id: int
+    country: str
+    code: str
+    name: str
+    rate: Decimal
 
 
 class PriceHistoryUpdatedByRead(BaseModel):

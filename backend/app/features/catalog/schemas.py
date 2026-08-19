@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.features.catalog.enums import BarcodeSource, BarcodeType, RecognitionType
 from app.features.catalog.image_storage import EXTENSION_BY_CONTENT_TYPE
@@ -186,3 +186,15 @@ class CreateProductRequest(BaseModel):
     barcode_type: BarcodeType = BarcodeType.OTHER
     store_id: int | None = None
     country: str | None = None
+    store_branch_id: int | None = None
+    initial_price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    tax_rate_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_store_listing_fields(self) -> "CreateProductRequest":
+        has_listing_field = self.initial_price is not None or self.tax_rate_id is not None
+        if has_listing_field and self.store_branch_id is None:
+            raise ValueError("store_branch_id is required when registering a store price or tax")
+        if self.store_branch_id is not None and self.initial_price is None:
+            raise ValueError("initial_price is required when store_branch_id is provided")
+        return self
