@@ -34,3 +34,4 @@ mobile/ios/DerivedData/
 *.log
 
 .claude/worktrees
+.tokensave
