@@ -500,6 +500,7 @@ function SheetSectionTitle({
 export function ScanScreen({ route, navigation }: Props) {
   const routeStoreBranchId = route.params?.storeBranchId;
   const scanFlow = route.params?.scanFlow ?? 'quick';
+  const suppressedBarcode = route.params?.suppressedBarcode;
   const isFocused = useIsFocused();
   const queryClient = useQueryClient();
   const shoppingListsQuery = useShoppingListsQuery();
@@ -514,6 +515,14 @@ export function ScanScreen({ route, navigation }: Props) {
   const permissionRequestedRef = useRef(false);
   const lastHandledBarcodeRef = useRef<string | null>(null);
   const inFlightBarcodeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (suppressedBarcode) {
+      // The code that just created a product may still be in front of the camera. Keep it
+      // locked on re-entry; a different code immediately unlocks normal automatic scanning.
+      lastHandledBarcodeRef.current = suppressedBarcode;
+    }
+  }, [suppressedBarcode]);
 
   const [sheet, setSheet] = useState<ScanSheet>(null);
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -778,6 +787,10 @@ export function ScanScreen({ route, navigation }: Props) {
       const barcodeValue = firstBarcode?.rawValue?.trim?.() ?? firstBarcode?.displayValue?.trim?.() ?? '';
       if (!barcodeValue) {
         return;
+      }
+
+      if (suppressedBarcode && barcodeValue !== suppressedBarcode && lastHandledBarcodeRef.current === suppressedBarcode) {
+        lastHandledBarcodeRef.current = null;
       }
 
       processBarcode(barcodeValue, 'barcode').catch(() => undefined);

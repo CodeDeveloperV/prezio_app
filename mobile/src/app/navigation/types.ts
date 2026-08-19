@@ -35,7 +35,11 @@ export type ComparisonStackParamList = {
 // disambiguation/creation.
 export type ShoppingSessionStackParamList = {
   BranchSelect: { pendingScan?: ScanResultProductContext } | undefined;
-  Scan: { storeBranchId?: number; scanFlow?: 'quick' | 'purchase' } | undefined;
+  Scan: {
+    storeBranchId?: number;
+    scanFlow?: 'quick' | 'purchase';
+    suppressedBarcode?: string;
+  } | undefined;
   ScanResult: ScanResultProductContext & {
     storeBranchId?: number | null;
     priceOffers?: ScanPriceOffer[];
@@ -59,6 +63,18 @@ export type ShoppingSessionStackParamList = {
     scanFlow?: 'quick' | 'purchase';
     barcode: string;
     barcodeType: BarcodeType;
+  };
+  ProductCreatedSuccess: {
+    storeBranchId: number;
+    scanFlow: 'quick' | 'purchase';
+    barcode: string;
+    shoppingListId: number;
+    shoppingListName: string;
+    addRequestId: string;
+    shoppingListItemId?: number;
+    addErrorMessage?: string;
+    price: number;
+    product: Pick<ScanProductDetails, 'id' | 'canonical_name' | 'brand_name' | 'presentation' | 'image_url' | 'status'>;
   };
   PriceHistory: { storeProductId: number };
   PriceUpdate: { storeProductId: number; currentPrice: string; version: number };

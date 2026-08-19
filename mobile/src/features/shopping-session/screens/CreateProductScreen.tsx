@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet } from 'react-native';
 // Image upload to S3 isn't configured yet -- see the commented "Foto del producto" section below.
 // import { Image } from 'react-native';
 // import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Input, Switch, Text, XStack, YStack } from 'tamagui';
 
 import { ScreenContainer } from '../../../shared/components/ScreenContainer';
@@ -21,6 +22,9 @@ import { useCreateProductMutation /*, useUploadProductImageMutation */ } from '.
 import { useTaxRatesQuery } from '../../pricing/hooks/useTaxRatesQuery';
 import type { ShoppingSessionStackParamList } from '../../../app/navigation/types';
 import { FlowHeader } from '../components/FlowHeader';
+import { addShoppingListItem } from '../../shopping-lists/api/shoppingListsApi';
+import { useShoppingListsQuery } from '../../shopping-lists/hooks/useShoppingLists';
+import { selectActiveShoppingList } from '../../shopping-lists/utils/selectActiveShoppingList';
 
 // const SUPPORTED_UPLOAD_TYPES: ImageUploadContentType[] = ['image/jpeg', 'image/png', 'image/webp'];
 //
@@ -148,10 +152,17 @@ export function CreateProductScreen({ route, navigation }: Props) {
   const [isTaxPickerOpen, setIsTaxPickerOpen] = useState(false);
   const [nameTouched, setNameTouched] = useState(false);
   const [categoryTouched, setCategoryTouched] = useState(false);
+  const [isAddingToList, setIsAddingToList] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const addRequestIdRef = useRef<string | null>(null);
+  const submissionStartedRef = useRef(false);
 
   const categoriesQuery = useCategoriesQuery();
   const createProductMutation = useCreateProductMutation();
   const taxRatesQuery = useTaxRatesQuery('PA');
+  const shoppingListsQuery = useShoppingListsQuery();
+  const activeShoppingList = selectActiveShoppingList(shoppingListsQuery.data);
+  const queryClient = useQueryClient();
   // const uploadImageMutation = useUploadProductImageMutation();
 
   const selectedCategory = categoriesQuery.data?.find((category) => category.id === categoryId) ?? null;
@@ -171,8 +182,8 @@ export function CreateProductScreen({ route, navigation }: Props) {
   const standardTaxRate = taxRatesQuery.data?.find((rate) => rate.code === 'ITBMS_7') ?? null;
   const selectedTaxRate = taxRatesQuery.data?.find((rate) => rate.id === taxRateId) ?? standardTaxRate;
   const effectiveTaxRateId = isTaxable ? selectedTaxRate?.id ?? null : null;
-  const canSubmit = Boolean(canonicalName.trim()) && categoryId !== null && isValidPrice && storeBranchId !== undefined;
-  const isSubmitDisabled = !canSubmit || createProductMutation.isPending;
+  const canSubmit = Boolean(canonicalName.trim()) && categoryId !== null && isValidPrice && storeBranchId != null;
+  const isSubmitDisabled = !canSubmit || createProductMutation.isPending || isAddingToList;
   const nameError = nameTouched && !canonicalName.trim() ? 'Ingresa el nombre del producto.' : null;
   const categoryError = categoryTouched && categoryId === null ? 'Selecciona una categoría.' : null;
   const priceError = priceTouched && !isValidPrice ? 'Ingresa un precio mayor que 0 con máximo 2 decimales.' : null;
@@ -193,15 +204,28 @@ export function CreateProductScreen({ route, navigation }: Props) {
   //   );
   // };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (submissionStartedRef.current) {
+      return;
+    }
     setNameTouched(true);
     setCategoryTouched(true);
     setPriceTouched(true);
     if (!canSubmit || categoryId === null) {
       return;
     }
-    createProductMutation.mutate(
-      {
+    if (!activeShoppingList) {
+      setSubmitError('No encontramos una compra activa. Vuelve a iniciar la compra antes de crear el producto.');
+      return;
+    }
+
+    submissionStartedRef.current = true;
+    setSubmitError(null);
+    const addRequestId = addRequestIdRef.current ?? `created-product-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    addRequestIdRef.current = addRequestId;
+
+    try {
+      const product = await createProductMutation.mutateAsync({
         canonical_name: canonicalName.trim(),
         brand_name: brandName.trim() || undefined,
         presentation: presentation.trim() || undefined,
@@ -211,26 +235,55 @@ export function CreateProductScreen({ route, navigation }: Props) {
         store_branch_id: storeBranchId,
         initial_price: Number(normalizedPrice),
         tax_rate_id: effectiveTaxRateId,
-      },
-      {
-        onSuccess: (product) =>
-          navigation.replace('ScanResult', {
-            storeBranchId: storeBranchId ?? null,
-            barcodeId: null,
-            product: {
-              id: product.id,
-              canonical_name: product.canonical_name,
-              brand_name: brandName.trim() || null,
-              presentation: product.presentation,
-              image_url: product.image_url,
-              status: product.status,
+      });
+
+      setIsAddingToList(true);
+      const successParams = {
+        storeBranchId,
+        scanFlow,
+        barcode,
+        shoppingListId: activeShoppingList.id,
+        shoppingListName: activeShoppingList.name,
+        addRequestId,
+        price: Number(normalizedPrice),
+        product,
+      };
+
+      try {
+        const item = await addShoppingListItem(activeShoppingList.id, {
+          product_id: product.id,
+          quantity: 1,
+          client_request_id: addRequestId,
+        });
+        await queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+        navigation.reset({
+          index: 1,
+          routes: [
+            { name: 'Scan', params: { storeBranchId, scanFlow, suppressedBarcode: barcode } },
+            { name: 'ProductCreatedSuccess', params: { ...successParams, shoppingListItemId: item.id } },
+          ],
+        });
+      } catch {
+        navigation.reset({
+          index: 1,
+          routes: [
+            { name: 'Scan', params: { storeBranchId, scanFlow, suppressedBarcode: barcode } },
+            {
+              name: 'ProductCreatedSuccess',
+              params: {
+                ...successParams,
+                addErrorMessage: 'Producto creado, pero no pudimos agregarlo a tu compra.',
+              },
             },
-            storeProduct: null,
-            priceOffers: [],
-            scanFlow,
-          }),
-      },
-    );
+          ],
+        });
+      } finally {
+        setIsAddingToList(false);
+      }
+    } catch {
+      setSubmitError('No pudimos crear el producto. Revisa tu conexión e inténtalo de nuevo.');
+      submissionStartedRef.current = false;
+    }
   };
 
   return (
@@ -738,11 +791,11 @@ export function CreateProductScreen({ route, navigation }: Props) {
           onPress={handleSubmit}
           minHeight={56}
         >
-          {createProductMutation.isPending ? <ActivityIndicator color={colorTokens.white} /> : 'Crear producto'}
+          {createProductMutation.isPending || isAddingToList ? <ActivityIndicator color={colorTokens.white} /> : 'Crear producto'}
         </Button>
-        {createProductMutation.isError ? (
+        {submitError ? (
           <Text fontFamily="$body" fontSize="$sm" color="$danger" textAlign="center">
-            No pudimos crear el producto. Revisa tu conexión e inténtalo de nuevo.
+            {submitError}
           </Text>
         ) : null}
       </YStack>

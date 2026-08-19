@@ -6,6 +6,7 @@ import { CreateProductScreen } from '../../features/shopping-session/screens/Cre
 import { PriceHistoryScreen } from '../../features/shopping-session/screens/PriceHistoryScreen';
 import { PriceUpdateScreen } from '../../features/shopping-session/screens/PriceUpdateScreen';
 import { ProductNotFoundScreen } from '../../features/shopping-session/screens/ProductNotFoundScreen';
+import { ProductCreatedSuccessScreen } from '../../features/shopping-session/screens/ProductCreatedSuccessScreen';
 import { ScanDisambiguationScreen } from '../../features/shopping-session/screens/ScanDisambiguationScreen';
 import { ScanResultScreen } from '../../features/shopping-session/screens/ScanResultScreen';
 import { ScanScreen } from '../../features/shopping-session/ScanScreen';
@@ -41,6 +42,11 @@ export function ShoppingSessionStack() {
         name="CreateProduct"
         component={CreateProductScreen}
         options={{ title: 'Nuevo producto', headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProductCreatedSuccess"
+        component={ProductCreatedSuccessScreen}
+        options={{ title: 'Producto creado', headerShown: false, gestureEnabled: false }}
       />
       <Stack.Screen
         name="PriceHistory"
