@@ -1,6 +1,6 @@
 import { createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'tamagui';
 
 import { DashboardScreen } from '../../features/dashboard/DashboardScreen';
@@ -38,6 +38,8 @@ const TAB_LABELS = {
 } as const;
 
 const primaryTabName = 'NewPurchase';
+const TAB_BAR_HORIZONTAL_INSET = 16;
+const TAB_BAR_BOTTOM_GAP = 12;
 const immersivePurchaseRoutes = new Set([
   'Scan',
   'ScanResult',
@@ -51,39 +53,39 @@ const immersivePurchaseRoutes = new Set([
 ]);
 
 const styles = StyleSheet.create({
-  safeArea: {
+  tabBarSafeArea: {
     backgroundColor: colorTokens.background,
+    paddingHorizontal: TAB_BAR_HORIZONTAL_INSET,
+    paddingTop: 8,
   },
   tabBarShell: {
     backgroundColor: colorTokens.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 12,
+    borderRadius: 30,
+    minHeight: 72,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     shadowColor: '#0F172A',
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
     shadowOffset: {
       width: 0,
-      height: -8,
+      height: 6,
     },
-    elevation: 18,
+    elevation: 10,
   },
   tabBarRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     minHeight: 56,
-    paddingTop: 2,
-    paddingBottom: 4,
-    gap: 2,
+    gap: 3,
+  },
+  tabItemPressed: {
+    transform: [{ scale: 0.96 }],
   },
   tabItemIcon: {
     width: 22,
@@ -94,27 +96,39 @@ const styles = StyleSheet.create({
   tabItemLabel: {
     fontFamily: fontFamily.body,
     fontSize: 11,
-    lineHeight: 13,
+    lineHeight: 14,
+    fontWeight: '500',
+  },
+  tabItemLabelActive: {
+    fontFamily: fontFamily.heading,
+    fontWeight: '600',
   },
   primaryTabWrap: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    minHeight: 72,
+    justifyContent: 'center',
+    minHeight: 56,
   },
   primaryTabGlow: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -34,
     backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    shadowColor: colorTokens.primaryPress,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 5,
   },
   primaryTabButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colorTokens.primary,
@@ -125,9 +139,9 @@ const styles = StyleSheet.create({
       width: 0,
       height: 8,
     },
-    elevation: 12,
+    elevation: 8,
   },
-  primaryTabButtonPressed: {
+  primaryTabPressed: {
     transform: [{ scale: 0.96 }],
   },
 });
@@ -186,17 +200,17 @@ function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarPro
               <Pressable
                 key={route.key}
                 accessibilityRole="button"
-                accessibilityLabel={label}
+                accessibilityLabel="Escanear producto"
                 accessibilityState={isFocused ? { selected: true } : {}}
                 onPress={handlePress}
                 style={({ pressed }) => [
                   styles.primaryTabWrap,
-                  pressed && styles.primaryTabButtonPressed,
+                  pressed && styles.primaryTabPressed,
                 ]}
               >
                 <View style={styles.primaryTabGlow}>
                   <View style={styles.primaryTabButton}>
-                    <Icon color={colorTokens.white} size={28} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
+                    <Icon color={colorTokens.white} size={22} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
                   </View>
                 </View>
               </Pressable>
@@ -213,12 +227,15 @@ function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarPro
               accessibilityLabel={label}
               accessibilityState={isFocused ? { selected: true } : {}}
               onPress={handlePress}
-              style={styles.tabItem}
+              style={({ pressed }) => [styles.tabItem, pressed && styles.tabItemPressed]}
             >
               <View style={styles.tabItemIcon}>
                 <Icon color={tint} size={22} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
               </View>
-              <Text fontFamily="$body" style={[styles.tabItemLabel, { color: tint }]}>
+              <Text
+                fontFamily={isFocused ? '$heading' : '$body'}
+                style={[styles.tabItemLabel, isFocused && styles.tabItemLabelActive, { color: tint }]}
+              >
                 {label}
               </Text>
             </Pressable>
@@ -230,16 +247,26 @@ function PrezioTabBarContent({ state, descriptors, navigation }: BottomTabBarPro
 }
 
 function PrezioTabBar(props: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
   const focusedRouteName = getFocusedPurchaseRouteName(props.state);
   if (focusedRouteName && immersivePurchaseRoutes.has(focusedRouteName)) {
     return null;
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <View
+      style={[
+        styles.tabBarSafeArea,
+        { paddingBottom: Math.max(insets.bottom, TAB_BAR_BOTTOM_GAP) },
+      ]}
+    >
       <PrezioTabBarContent {...props} />
-    </SafeAreaView>
+    </View>
   );
+}
+
+function renderPrezioTabBar(props: BottomTabBarProps) {
+  return <PrezioTabBar {...props} />;
 }
 
 export function MainTabs() {
@@ -251,13 +278,13 @@ export function MainTabs() {
         tabBarInactiveTintColor: colorTokens.textSecondary,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: 'transparent',
+          backgroundColor: colorTokens.background,
           borderTopWidth: 0,
           elevation: 0,
           height: 0,
         },
       }}
-      tabBar={PrezioTabBar}
+      tabBar={renderPrezioTabBar}
     >
       <Tab.Screen
         name="Dashboard"
