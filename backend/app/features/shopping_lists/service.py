@@ -208,16 +208,17 @@ class ShoppingListService:
         priced_subtotal = Decimal("0")
         unpriced_items_count = 0
         currency: str | None = None
-        for item, product, brand, store_product in rows:
+        for item, product, brand, store_product, barcode_id, barcode in rows:
             pricing_status = self._summary_pricing_status(store_product)
             unit_price: Decimal | None = None
             subtotal: Decimal | None = None
-            if pricing_status is ProductComparisonStatus.AVAILABLE:
-                assert store_product is not None
-                unit_price = Decimal(str(store_product.current_price))
+            # A purchase total is a ledger of what this shopper explicitly captured, never a
+            # live projection of the community listing. Realtime may change StoreProduct later.
+            if item.captured_unit_price is not None:
+                unit_price = Decimal(str(item.captured_unit_price))
                 subtotal = unit_price * item.quantity
                 priced_subtotal += subtotal
-                currency = currency or store_product.currency
+                currency = currency or (store_product.currency if store_product else "USD")
             else:
                 unpriced_items_count += 1
 
@@ -231,11 +232,18 @@ class ShoppingListService:
                     brand=brand.name if brand else None,
                     presentation=product.presentation if product else None,
                     image_url=product.image_url if product else None,
+                    barcode_id=barcode_id,
+                    barcode=barcode,
                     store_product_id=store_product.id if store_product else None,
                     current_price=Decimal(str(store_product.current_price)) if store_product else None,
                     currency=store_product.currency if store_product else None,
                     availability=store_product.availability if store_product else None,
                     pricing_status=pricing_status,
+                    captured_unit_price=Decimal(str(item.captured_unit_price)) if item.captured_unit_price is not None else None,
+                    price_captured_at=item.price_captured_at,
+                    last_verified_at=store_product.last_verified_at if store_product else None,
+                    store_product_version=store_product.version if store_product else None,
+                    last_updated_at=store_product.updated_at if store_product else None,
                     unit_price=unit_price,
                     subtotal=subtotal,
                 )
@@ -262,6 +270,55 @@ class ShoppingListService:
             items=items,
         )
 
+    async def capture_item_price(
+        self,
+        shopping_list_id: int,
+        item_id: int,
+        requesting_user_id: int,
+        *,
+        expected_item_version: int,
+        store_product_id: int,
+        expected_store_product_version: int,
+    ) -> ShoppingListItem:
+        """Adopt a branch price only after an explicit action in this purchase.
+
+        This intentionally does not follow Redis price updates: StoreProduct is collaborative
+        state, whereas captured_unit_price belongs to one shopping-list item.
+        """
+        shopping_list, member = await self._get_list_and_member(shopping_list_id, requesting_user_id)
+        if not self.policy.can_edit_items(member, shopping_list):
+            raise ShoppingListPermissionDenied("You cannot edit items on this list")
+        item = await self.items.get_by_id(item_id)
+        if item is None or item.shopping_list_id != shopping_list_id:
+            raise ShoppingListItemNotFound(item_id)
+        listing = await self.store_products.get_by_id(store_product_id)
+        if (
+            listing is None
+            or listing.product_id != item.product_id
+            or listing.store_branch_id != shopping_list.active_store_branch_id
+            or listing.version != expected_store_product_version
+            or self._summary_pricing_status(listing) is not ProductComparisonStatus.AVAILABLE
+        ):
+            raise ShoppingListItemVersionConflict(item)
+        updated = await self.items.update_if_version_matches(
+            item_id,
+            expected_item_version,
+            update_captured_price=True,
+            captured_store_product_id=listing.id,
+            captured_store_branch_id=listing.store_branch_id,
+            captured_unit_price=listing.current_price,
+            price_captured_at=datetime.now(timezone.utc),
+        )
+        if updated is None:
+            current = await self.items.get_by_id(item_id)
+            assert current is not None
+            raise ShoppingListItemVersionConflict(current)
+        await self.db.commit()
+        await self._publish_list_event(
+            shopping_list_id, "item_updated", entity_id=updated.id, version=updated.version, payload=self._item_payload(updated)
+        )
+        return updated
+
     async def add_item(
         self,
         shopping_list_id: int,
@@ -279,6 +336,8 @@ class ShoppingListService:
             store_product = await self.store_products.get_by_branch_and_product(
                 shopping_list.active_store_branch_id, product_id
             )
+        if self._summary_pricing_status(store_product) is not ProductComparisonStatus.AVAILABLE:
+            store_product = None
         item, created = await self.items.increment_or_create(
             shopping_list_id=shopping_list_id, product_id=product_id, quantity=quantity, added_by=added_by,
             client_request_id=client_request_id,

@@ -10,7 +10,7 @@ from app.features.shopping_lists.models import (
     ShoppingListItem,
     ShoppingListMember,
 )
-from app.features.catalog.models import Brand, Product
+from app.features.catalog.models import Brand, Product, ProductBarcode
 from app.features.pricing.models import StoreProduct
 from app.features.stores.models import Store, StoreBranch
 from app.shared.base_repository import BaseRepository
@@ -73,7 +73,7 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
 
     async def list_summary_rows(
         self, shopping_list_id: int, active_store_branch_id: int | None
-    ) -> list[tuple[ShoppingListItem, Product | None, Brand | None, StoreProduct | None]]:
+    ) -> list[tuple[ShoppingListItem, Product | None, Brand | None, StoreProduct | None, int | None, str | None]]:
         """Bulk-resolves list items and only the selected branch's listing.
 
         The join is intentionally based on ``product_id + active_store_branch_id``. Barcodes
@@ -83,8 +83,10 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
             StoreProduct.product_id == ShoppingListItem.product_id,
             StoreProduct.store_branch_id == active_store_branch_id,
         )
+        barcode_id = select(ProductBarcode.id).where(ProductBarcode.product_id == ShoppingListItem.product_id).order_by(ProductBarcode.id.asc()).limit(1).scalar_subquery()
+        barcode = select(ProductBarcode.barcode).where(ProductBarcode.product_id == ShoppingListItem.product_id).order_by(ProductBarcode.id.asc()).limit(1).scalar_subquery()
         result = await self.session.execute(
-            select(ShoppingListItem, Product, Brand, StoreProduct)
+            select(ShoppingListItem, Product, Brand, StoreProduct, barcode_id, barcode)
             .outerjoin(Product, Product.id == ShoppingListItem.product_id)
             .outerjoin(Brand, Brand.id == Product.brand_id)
             .outerjoin(StoreProduct, store_product_join)
@@ -160,6 +162,11 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
         checked_at: datetime | None = None,
         price_at_check: Decimal | None = None,
         store_branch_id: int | None = None,
+        update_captured_price: bool = False,
+        captured_store_product_id: int | None = None,
+        captured_store_branch_id: int | None = None,
+        captured_unit_price: Decimal | None = None,
+        price_captured_at: datetime | None = None,
     ) -> ShoppingListItem | None:
         """Atomic `UPDATE ... WHERE id = ? AND version = ?`, same optimistic-concurrency pattern
         as StoreProductRepository.update_price_if_version_matches (pricing) -- no new mechanism.
@@ -177,6 +184,11 @@ class ShoppingListItemRepository(BaseRepository[ShoppingListItem]):
             values["checked_at"] = checked_at
             values["price_at_check"] = price_at_check
             values["store_branch_id"] = store_branch_id
+        if update_captured_price:
+            values["captured_store_product_id"] = captured_store_product_id
+            values["captured_store_branch_id"] = captured_store_branch_id
+            values["captured_unit_price"] = captured_unit_price
+            values["price_captured_at"] = price_captured_at
 
         result = await self.session.execute(
             update(ShoppingListItem)

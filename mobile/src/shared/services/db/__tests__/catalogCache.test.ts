@@ -27,6 +27,7 @@ function makeScanResult(overrides: Partial<{ productId: number; barcodeId: numbe
       availability: 'in_stock',
       last_verified_at: '2026-01-01T00:00:00Z',
       last_verified_by: 1,
+      updated_at: '2026-01-01T00:00:00Z',
     },
     price_offers: [],
   };

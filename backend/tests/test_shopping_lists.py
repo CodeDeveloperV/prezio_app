@@ -648,3 +648,51 @@ async def test_purchase_summary_uses_product_identity_without_requiring_a_barcod
     assert summary["pricing_status"] == "complete"
     assert summary["items"][0]["product_id"] == product_id
     assert summary["items"][0]["subtotal"] == "7.25"
+
+
+async def test_purchase_summary_keeps_captured_price_when_the_live_store_price_changes(async_client: AsyncClient) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+    branch_id = await seed_branch(async_client, store_name="Xtra", branch_name="Tumba Muerto")
+    product_id = await seed_named_product(async_client, "Leche capturada", "1 L")
+    await seed_store_product(async_client, branch_id=branch_id, product_id=product_id, price="1.85")
+    await set_summary_branch(async_client, token, shopping_list_id, branch_id)
+    item = await add_item(async_client, token, shopping_list_id, product_id, 2)
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        listing = (await session.execute(select(StoreProduct).where(StoreProduct.product_id == product_id))).scalar_one()
+        listing.current_price = "1.95"  # Simulates another shopper's later realtime update.
+        listing.version += 1
+        await session.commit()
+
+    summary = await get_purchase_summary(async_client, token, shopping_list_id)
+    line = summary["items"][0]
+    assert line["shopping_list_item_id"] == item["id"]
+    assert line["current_price"] == "1.95"
+    assert line["captured_unit_price"] == "1.85"
+    assert line["subtotal"] == "3.70"
+    assert summary["priced_subtotal"] == "3.70"
+
+
+async def test_explicit_capture_adopts_current_branch_price_only_for_that_item(async_client: AsyncClient) -> None:
+    token = await get_access_token(async_client, OWNER_CREDENTIALS)
+    shopping_list_id = await create_list(async_client, token)
+    branch_id = await seed_branch(async_client, store_name="Rey", branch_name="Costa del Este")
+    product_id = await seed_named_product(async_client, "Cereal", "500 g")
+    await seed_store_product(async_client, branch_id=branch_id, product_id=product_id, price="2.00")
+    await set_summary_branch(async_client, token, shopping_list_id, branch_id)
+    item = await add_item(async_client, token, shopping_list_id, product_id, 1)
+    session_factory = async_client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        listing = (await session.execute(select(StoreProduct).where(StoreProduct.product_id == product_id))).scalar_one()
+        listing.current_price = "2.25"
+        listing.version += 1
+        await session.commit()
+        listing_id, listing_version = listing.id, listing.version
+    response = await async_client.post(
+        f"/shopping-lists/{shopping_list_id}/items/{item['id']}/capture-price",
+        json={"version": item["version"], "store_product_id": listing_id, "store_product_version": listing_version},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["captured_unit_price"] == "2.25"

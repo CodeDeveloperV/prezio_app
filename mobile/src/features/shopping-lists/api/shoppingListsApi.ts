@@ -8,6 +8,7 @@ import type {
   ShoppingListInvitationCreate,
   ShoppingListItem,
   ShoppingListItemCreate,
+  ShoppingListItemCapturePrice,
   ShoppingListItemUpdate,
   ShoppingListMember,
   ShoppingListSummary,
@@ -75,6 +76,17 @@ export function updateShoppingListItem(
 ): Promise<ShoppingListItem> {
   return httpClient
     .patch(`shopping-lists/${shoppingListId}/items/${itemId}`, { json: request })
+    .json<ShoppingListItem>();
+}
+
+/** Captures the current active-branch listing for this item after an explicit purchase action. */
+export function captureShoppingListItemPrice(
+  shoppingListId: number,
+  itemId: number,
+  request: ShoppingListItemCapturePrice,
+): Promise<ShoppingListItem> {
+  return httpClient
+    .post(`shopping-lists/${shoppingListId}/items/${itemId}/capture-price`, { json: request })
     .json<ShoppingListItem>();
 }
 

@@ -37,6 +37,7 @@ from app.features.shopping_lists.schemas import (
     ShoppingListInvitationCreate,
     ShoppingListInvitationRead,
     ShoppingListItemCreate,
+    ShoppingListItemCapturePrice,
     ShoppingListItemRead,
     ShoppingListItemUpdate,
     ShoppingListMemberRead,
@@ -277,6 +278,32 @@ async def update_shopping_list_item(
             },
         )
     return ShoppingListItemRead.model_validate(updated)
+
+
+@router.post("/{shopping_list_id}/items/{item_id}/capture-price", response_model=ShoppingListItemRead)
+async def capture_shopping_list_item_price(
+    shopping_list_id: int,
+    item_id: int,
+    payload: ShoppingListItemCapturePrice,
+    current_user: User = Depends(get_current_user),
+    service: ShoppingListService = Depends(get_shopping_list_service),
+) -> ShoppingListItemRead | JSONResponse:
+    try:
+        item = await service.capture_item_price(
+            shopping_list_id, item_id, current_user.id,
+            expected_item_version=payload.version,
+            store_product_id=payload.store_product_id,
+            expected_store_product_version=payload.store_product_version,
+        )
+    except ShoppingListNotFound as exc:
+        raise HTTPException(404, "Shopping list not found") from exc
+    except ShoppingListItemNotFound as exc:
+        raise HTTPException(404, "Item not found") from exc
+    except ShoppingListPermissionDenied as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except ShoppingListItemVersionConflict as exc:
+        return JSONResponse(status_code=409, content={"detail": "Item or price changed concurrently", "item": jsonable_encoder(ShoppingListItemRead.model_validate(exc.current_item))})
+    return ShoppingListItemRead.model_validate(item)
 
 
 @router.delete("/{shopping_list_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)

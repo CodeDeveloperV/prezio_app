@@ -9,8 +9,8 @@ type Listener = (event: PriceUpdateEvent) => void;
 // route/broadcast PriceUpdateEvent payloads back per subscribed topic.
 // store_product_id is a DB autoincrement integer, not a UUID (see shared-types).
 interface SubscribeMessage {
-  type: 'subscribe' | 'unsubscribe';
-  storeProductId: number;
+  action: 'subscribe' | 'unsubscribe';
+  store_product_id: number;
 }
 
 const MAX_BACKOFF_MS = 30_000;
@@ -48,7 +48,7 @@ class WsClient {
     if (!listeners) {
       listeners = new Set();
       this.topicListeners.set(storeProductId, listeners);
-      this.send({ type: 'subscribe', storeProductId });
+      this.send({ action: 'subscribe', store_product_id: storeProductId });
     }
     listeners.add(listener);
 
@@ -56,7 +56,7 @@ class WsClient {
       listeners?.delete(listener);
       if (listeners && listeners.size === 0) {
         this.topicListeners.delete(storeProductId);
-        this.send({ type: 'unsubscribe', storeProductId });
+        this.send({ action: 'unsubscribe', store_product_id: storeProductId });
       }
     };
   }
@@ -74,7 +74,7 @@ class WsClient {
       this.reconnectAttempt = 0;
       // Re-subscribe to all active topics after a reconnect.
       for (const storeProductId of this.topicListeners.keys()) {
-        this.send({ type: 'subscribe', storeProductId });
+        this.send({ action: 'subscribe', store_product_id: storeProductId });
       }
     };
 
@@ -119,10 +119,6 @@ class WsClient {
     try {
       event = JSON.parse(raw);
     } catch {
-      return;
-    }
-
-    if (event?.type !== 'price_update') {
       return;
     }
 

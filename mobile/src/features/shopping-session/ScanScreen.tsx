@@ -755,6 +755,7 @@ export function ScanScreen({ route, navigation }: Props) {
                     ? new Date(cached.storeProduct.lastVerifiedAt).toISOString()
                     : null,
                   last_verified_by: null,
+                  updated_at: new Date().toISOString(),
                 }
               : null,
             priceOffers: [],

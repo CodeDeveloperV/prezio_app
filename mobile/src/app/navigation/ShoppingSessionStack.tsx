@@ -8,6 +8,7 @@ import { PriceUpdateScreen } from '../../features/shopping-session/screens/Price
 import { ProductNotFoundScreen } from '../../features/shopping-session/screens/ProductNotFoundScreen';
 import { ProductCreatedSuccessScreen } from '../../features/shopping-session/screens/ProductCreatedSuccessScreen';
 import { PurchaseSummaryScreen } from '../../features/shopping-session/screens/PurchaseSummaryScreen';
+import { ShoppingListItemDetailScreen } from '../../features/shopping-session/screens/ShoppingListItemDetailScreen';
 import { ScanDisambiguationScreen } from '../../features/shopping-session/screens/ScanDisambiguationScreen';
 import { ScanResultScreen } from '../../features/shopping-session/screens/ScanResultScreen';
 import { ScanScreen } from '../../features/shopping-session/ScanScreen';
@@ -23,6 +24,7 @@ export function ShoppingSessionStack() {
         component={PurchaseSummaryScreen}
         options={{ title: 'Mi compra', headerShown: false }}
       />
+      <Stack.Screen name="ShoppingListItemDetail" component={ShoppingListItemDetailScreen} options={{ title: 'Detalle del producto', headerShown: false }} />
       <Stack.Screen
         name="Scan"
         component={ScanScreen}

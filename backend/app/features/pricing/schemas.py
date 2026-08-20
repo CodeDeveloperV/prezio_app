@@ -18,6 +18,7 @@ class StoreProductRead(ORMModel):
     availability: Availability
     last_verified_at: datetime | None
     last_verified_by: int | None
+    updated_at: datetime
 
 
 class TaxRateRead(ORMModel):

@@ -147,6 +147,18 @@ test('changes quantities with the server item version and refetches on focus', (
   expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['shoppingLists', 11, 'summary'] });
 });
 
+test('opens item detail from the card body but keeps quantity controls independent', () => {
+  const renderer = renderScreen();
+  const detail = renderer.root.findByProps({ accessibilityLabel: 'Ver detalle de Nutella' });
+  const increment = renderer.root.findByProps({ accessibilityLabel: 'Aumentar Nutella' });
+
+  ReactTestRenderer.act(() => detail.props.onPress());
+  expect(navigation.navigate).toHaveBeenCalledWith('ShoppingListItemDetail', { shoppingListId: 11, itemId: 21 });
+  navigation.navigate.mockClear();
+  ReactTestRenderer.act(() => increment.props.onPress());
+  expect(navigation.navigate).not.toHaveBeenCalled();
+});
+
 test('renders a recoverable error state', () => {
   mockQueryState = { data: undefined, isPending: false, isError: true, refetch: mockRefetch };
   const renderer = renderScreen();

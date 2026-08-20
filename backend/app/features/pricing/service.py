@@ -117,6 +117,7 @@ class PricingService:
                     reference_id=store_product_id,
                 )
         await self.db.commit()
+        await self.db.refresh(updated)
 
         await self._publish_price_update(updated, source=source)
         return updated
@@ -146,6 +147,7 @@ class PricingService:
             reference_id=store_product_id,
         )
         await self.db.commit()
+        await self.db.refresh(updated)
         # Reuse the same StoreProduct channel; clients that only understand price updates ignore
         # the additive verification metadata while newer clients can refresh freshness UI.
         await self._publish_price_update(updated, source=PriceUpdateSource.COMMUNITY)

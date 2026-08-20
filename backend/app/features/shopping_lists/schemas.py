@@ -48,6 +48,14 @@ class ShoppingListItemUpdate(BaseModel):
     checked: bool | None = None
 
 
+class ShoppingListItemCapturePrice(BaseModel):
+    """Explicitly adopts the current branch listing as this item's purchase snapshot."""
+
+    version: int
+    store_product_id: int
+    store_product_version: int
+
+
 class ShoppingListItemRead(ORMModel):
     id: int
     shopping_list_id: int
@@ -82,10 +90,17 @@ class ShoppingListSummaryItem(BaseModel):
     brand: str | None
     presentation: str | None
     image_url: str | None
+    barcode_id: int | None
+    barcode: str | None
     store_product_id: int | None
     current_price: Decimal | None
     currency: str | None
     availability: Availability | None
+    captured_unit_price: Decimal | None
+    price_captured_at: datetime | None
+    last_verified_at: datetime | None
+    store_product_version: int | None
+    last_updated_at: datetime | None
     pricing_status: ProductComparisonStatus
     unit_price: Decimal | None
     subtotal: Decimal | None

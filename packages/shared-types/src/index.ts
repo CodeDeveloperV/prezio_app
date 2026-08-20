@@ -311,6 +311,7 @@ export interface StoreProductRead {
   availability: Availability;
   last_verified_at: ISODateTime | null;
   last_verified_by: number | null;
+  updated_at: ISODateTime;
 }
 
 export interface TaxRate {
@@ -427,6 +428,12 @@ export interface ShoppingListItemUpdate {
   checked?: boolean;
 }
 
+export interface ShoppingListItemCapturePrice {
+  version: number;
+  store_product_id: number;
+  store_product_version: number;
+}
+
 // Returned with HTTP 409 when the submitted item version is stale.
 export interface ShoppingListItemConflictResponse {
   detail: string;
@@ -452,10 +459,17 @@ export interface ShoppingListSummaryItem {
   brand: string | null;
   presentation: string | null;
   image_url: string | null;
+  barcode_id: number | null;
+  barcode: string | null;
   store_product_id: number | null;
   current_price: string | null;
   currency: string | null;
   availability: Availability | null;
+  captured_unit_price: string | null;
+  price_captured_at: ISODateTime | null;
+  last_verified_at: ISODateTime | null;
+  store_product_version: number | null;
+  last_updated_at: ISODateTime | null;
   pricing_status: ShoppingListSummaryItemPricingStatus;
   unit_price: string | null;
   subtotal: string | null;

@@ -97,6 +97,7 @@ async def create_store_product_price(
     )
     await repository.add(listing)
     await db.commit()
+    await db.refresh(listing)
     return StoreProductRead.model_validate(listing)
 
 

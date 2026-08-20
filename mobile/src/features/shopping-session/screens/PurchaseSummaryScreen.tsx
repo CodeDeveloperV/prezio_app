@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
   placeholder: { width: 52, height: 52, borderRadius: 12 },
   quantityButton: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(34, 197, 94, 0.10)' },
   quantityButtonDisabled: { opacity: 0.45 },
+  productBody: { flex: 1 },
 });
 
 function formatMoney(amount: string | null): string {
@@ -39,24 +40,28 @@ function PurchaseItemRow({
   item,
   onChangeQuantity,
   isUpdating,
+  onOpen,
 }: {
   item: ShoppingListSummaryItem;
   onChangeQuantity: (item: ShoppingListSummaryItem, quantity: number) => void;
   isUpdating: boolean;
+  onOpen: () => void;
 }) {
-  const hasPrice = item.pricing_status === 'available' && item.unit_price !== null;
+  const hasPrice = item.unit_price !== null;
   const canDecrease = item.quantity > 1 && !isUpdating;
   return (
     <Card elevation={2} backgroundColor="$background" borderRadius="$4" paddingHorizontal="$3" paddingVertical="$2">
       <XStack gap="$3" alignItems="center">
-        {item.image_url ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`Ver detalle de ${item.name}`} onPress={onOpen} style={styles.productBody}>
+          <XStack gap="$3" alignItems="center">
+            {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.image} resizeMode="contain" />
         ) : (
           <YStack style={styles.placeholder} backgroundColor="rgba(15, 23, 42, 0.06)" alignItems="center" justifyContent="center">
             <IconShoppingCart color={colorTokens.textSecondary} size={22} strokeWidth={DEFAULT_ICON_STROKE_WIDTH} />
           </YStack>
         )}
-        <YStack flex={1} gap="$0.5">
+            <YStack flex={1} gap="$0.5">
           <Text fontFamily="$heading" fontSize="$sm" color="$color" numberOfLines={1}>
             {item.name}
           </Text>
@@ -77,7 +82,9 @@ function PurchaseItemRow({
               </Text>
             </XStack>
           )}
-        </YStack>
+            </YStack>
+          </XStack>
+        </Pressable>
         <YStack alignItems="flex-end" alignSelf="stretch" justifyContent="space-between" gap="$1">
           <XStack alignItems="center" gap="$1.5">
             <Pressable
@@ -175,6 +182,7 @@ export function PurchaseSummaryScreen({ route, navigation }: Props) {
             item={item}
             isUpdating={quantityMutation.isPending}
             onChangeQuantity={(target, quantity) => quantityMutation.mutate({ item: target, quantity })}
+            onOpen={() => navigation.navigate('ShoppingListItemDetail', { shoppingListId, itemId: item.shopping_list_item_id })}
           />
         )}
         contentContainerStyle={styles.listContent}

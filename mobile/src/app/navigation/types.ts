@@ -35,6 +35,7 @@ export type ComparisonStackParamList = {
 // disambiguation/creation.
 export type ShoppingSessionStackParamList = {
   PurchaseSummary: { shoppingListId: number };
+  ShoppingListItemDetail: { shoppingListId: number; itemId: number };
   BranchSelect: { pendingScan?: ScanResultProductContext } | undefined;
   Scan: {
     storeBranchId?: number;
